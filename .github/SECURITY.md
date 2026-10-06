@@ -67,7 +67,7 @@ git config core.hooksPath .husky
 ### Rodar o scan localmente
 
 ```bash
-bash scripts/scan-secrets.sh
+bash scripts/ci/scan-secrets.sh
 ```
 
 O que ele bloqueia:
@@ -94,9 +94,10 @@ provavelmente não é falso positivo.
 ### Reportar vulnerability
 
 Se descobrir uma secret vaza, **avise imediatamente:**
-1. Crie issue privada em GitHub (não publique)
-2. Ou email: [maintainer-email-aqui]
-3. **Não** comente em PRs/issues públicas
+1. Use o relato privado do GitHub: **Security → Report a vulnerability**
+   (`https://github.com/hugoreiisc12/NIO-CLI/security/advisories/new`)
+2. **Não** abra issue pública nem comente em PRs sobre o problema
+3. Se for credencial vazada, **rotacione primeiro** (veja `docs/BACKLOG-TECNICO.md` §6.6)
 
 ---
 

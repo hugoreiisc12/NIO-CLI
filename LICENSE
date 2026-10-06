@@ -1,0 +1,75 @@
+NIO-CLI — Licença Proprietária / Proprietary License
+
+Copyright (c) 2026 Hugo Reis. Todos os direitos reservados.
+Copyright (c) 2026 Hugo Reis. All rights reserved.
+
+────────────────────────────────────────────────────────────────────────────
+PORTUGUÊS
+────────────────────────────────────────────────────────────────────────────
+
+Este software e a documentação associada ("Software") são propriedade exclusiva do
+titular dos direitos autorais acima. Nenhuma licença é concedida, expressa ou
+implícita, exceto o que está descrito abaixo.
+
+1. Uso permitido. Você pode instalar e executar o Software, conforme distribuído pelo
+   titular (por exemplo, pelo registro npm público), para uso próprio ou interno.
+
+2. Restrições. Sem autorização prévia e por escrito do titular, é proibido:
+   a) copiar, modificar, traduzir ou criar obras derivadas do Software;
+   b) distribuir, sublicenciar, vender, alugar ou disponibilizar o Software ou seu
+      código-fonte a terceiros, inclusive como serviço hospedado;
+   c) remover ou alterar avisos de direitos autorais ou desta licença;
+   d) fazer engenharia reversa, exceto na medida em que a lei aplicável proíba esta
+      restrição.
+
+3. Contribuições. Quem enviar código, documentação ou outra contribuição a este
+   repositório concede ao titular uma licença perpétua, mundial, irrevogável e isenta
+   de royalties para usar, modificar e distribuir a contribuição como parte do
+   Software, e declara ter o direito de fazê-lo.
+
+4. Componentes de terceiros. O Software usa bibliotecas de terceiros, cada uma regida
+   pela própria licença. Esta licença não as altera.
+
+5. Isenção de garantia. O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM
+   GARANTIA DE QUALQUER TIPO, EXPRESSA OU IMPLÍCITA, INCLUINDO COMERCIALIZAÇÃO,
+   ADEQUAÇÃO A UM FIM ESPECÍFICO E NÃO VIOLAÇÃO. O TITULAR NÃO RESPONDE POR DANOS
+   DECORRENTES DO USO OU DA IMPOSSIBILIDADE DE USO DO SOFTWARE.
+
+6. Rescisão. Esta licença termina automaticamente se você descumprir qualquer
+   condição. Pedidos de autorização: abra uma issue em
+   https://github.com/hugoreiisc12/NIO-CLI
+
+────────────────────────────────────────────────────────────────────────────
+ENGLISH
+────────────────────────────────────────────────────────────────────────────
+
+This software and associated documentation (the "Software") are the exclusive
+property of the copyright holder above. No license is granted, express or implied,
+except as stated below.
+
+1. Permitted use. You may install and run the Software as distributed by the holder
+   (for example, through the public npm registry) for your own or internal use.
+
+2. Restrictions. Without the holder's prior written permission you may not:
+   (a) copy, modify, translate or create derivative works of the Software;
+   (b) distribute, sublicense, sell, rent or make the Software or its source code
+       available to third parties, including as a hosted service;
+   (c) remove or alter copyright or license notices;
+   (d) reverse engineer the Software, except where applicable law forbids this
+       restriction.
+
+3. Contributions. Anyone submitting code, documentation or other contributions to
+   this repository grants the holder a perpetual, worldwide, irrevocable, royalty-free
+   license to use, modify and distribute the contribution as part of the Software, and
+   represents that they have the right to do so.
+
+4. Third-party components. The Software uses third-party libraries, each governed by
+   its own license. This license does not change them.
+
+5. Disclaimer. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT. THE HOLDER IS NOT LIABLE FOR ANY DAMAGES ARISING FROM THE USE OF,
+   OR INABILITY TO USE, THE SOFTWARE.
+
+6. Termination. This license terminates automatically if you breach any condition.
+   Permission requests: open an issue at https://github.com/hugoreiisc12/NIO-CLI

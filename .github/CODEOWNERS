@@ -1,0 +1,7 @@
+# Revisão obrigatória (branch protection → "Require review from Code Owners").
+*                       @hugoreiisc12
+/.github/               @hugoreiisc12
+/db/                    @hugoreiisc12
+/src/gateway/           @hugoreiisc12
+/docker/                @hugoreiisc12
+/Dockerfile.gateway     @hugoreiisc12

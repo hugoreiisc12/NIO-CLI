@@ -8,18 +8,29 @@ on:
     branches: [ main ]
   workflow_call:   # reutilizável: publish.yml/image.yml chamam como gate antes de release
 
+# Princípio do menor privilégio: o CI só lê. Quem escreve (image.yml) declara no próprio job.
+permissions:
+  contents: read
+
+# Push novo no mesmo PR cancela a rodada anterior; `main` e tags nunca são canceladas.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Gate de segredo. Roda antes/junto do test e também nos gates de release
   # (publish.yml/image.yml chamam este workflow) — não publica com segredo vazado.
   secrets:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Scan de segredos
-        run: bash scripts/scan-secrets.sh
+        run: bash scripts/ci/scan-secrets.sh
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -41,7 +52,7 @@ jobs:
 
     env:
       NIO_DATABASE_URL: postgres://postgres:postgres@localhost:5432/nio_cli
-      # § 11.2: o preload de `bun test` (scripts/test-env.ts) apaga NIO_DATABASE_URL
+      # § 11.2: o preload de `bun test` (scripts/test/test-env.ts) apaga NIO_DATABASE_URL
       # por padrão — só integração de propósito, nunca o .env de um dev sem querer.
       # O CI declara o opt-in explicitamente: este Postgres É efêmero e descartável.
       NIO_TEST_DB_OK: "1"
@@ -64,6 +75,10 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Audit de dependências
+        # Falha em high/critical. Exceção aceita exige override no package.json + registro em docs/security.
+        run: bun audit --audit-level=high
 
       - name: Typecheck
         run: bunx tsc --noEmit

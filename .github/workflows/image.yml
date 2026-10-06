@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/hugoreiis12-png/nio-gateway
+  IMAGE: ghcr.io/hugoreiisc12/nio-gateway
 
 jobs:
   gate:
@@ -82,7 +82,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout main
-          sed -i -E "s#(ghcr.io/hugoreiis12-png/nio-gateway:)[^ ]+#\\1${TAG}#" docker/docker-compose.deploy.yml
+          sed -i -E "s#(ghcr.io/hugoreiisc12/nio-gateway:)[^ ]+#\\1${TAG}#" docker/docker-compose.deploy.yml
           if git diff --quiet -- docker/docker-compose.deploy.yml; then
             echo "compose de deploy já aponta pra ${TAG} — nada a commitar."
             exit 0

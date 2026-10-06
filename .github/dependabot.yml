@@ -1,0 +1,21 @@
+# Atualizações automáticas de dependência. O CI (`bun audit` + testes) é o gate de cada PR.
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message: { prefix: "chore(deps)" }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    commit-message: { prefix: "chore(ci)" }
+
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    commit-message: { prefix: "chore(docker)" }

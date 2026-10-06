@@ -29,3 +29,6 @@ package-lock.json
 
 # nio (config local do usuário)
 nio.user.json
+
+# gerado por `nio lang` no projeto do usuário — nunca neste repo
+.nio-lang.json
