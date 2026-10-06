@@ -14,6 +14,18 @@
 >
 > Reverificações desta passada: **2.1** (7 imports diretos de `createSessionRepository`), **2.2** (agora 11 arquivos > 300 linhas), **3.1** (`log_session`/`session_activity` sem uma única referência em `src/`) e **5.3** (`mcpServerJsPath()` — **confirmado em runtime** no `dist/` construído, ver [§ 10.4](#104-mcpserverjspath-resolve-caminho-inexistente-médio--53-confirmado-em-runtime)) continuam **abertos e reproduzíveis**. O item **1.1** (`@docs/_patterns.md`) **regrediu** — ver [§ 8.3](#83-docs_patternsmd-voltou-ao-agentsmd--item-11-regrediu-baixo). A ressalva de 09-19 sobre 3 erros de `tsc` em `attachments.ts` **caducou** (era drift de `node_modules`, hoje limpo).
 
+> **Atualização 2026-10-05 (reconciliação, v0.18.3)**: o backlog estava atrás do código. Conferido item a item — `tsc` ✅ · `bun test` 1162 pass / 0 fail · `bun audit` ✅ **zero** (era 5; ver abaixo).
+>
+> **Já resolvidos no código (docs estavam desatualizados):** 2.1 (commit `9378036` + `session-boundary.test.ts`), 3.1/9.1 (migration `0015` dropou as tabelas), 5.3/10.4 (`mcpServerJsPath`), QP-1 (anexo `.xlsx` usa `exceljs`), QP-2 (`adm-zip` 0.6.1), QP-3 (`hardenSecretFile` nos 2 arquivos), QP-6, 8.3, 10.1 (Biome, só formatter é gate), 10.2, 11.1, 11.2.
+>
+> **Fechados nesta data:** `xlsx` removido (só sobrava como fixture de teste, trocada por `exceljs`) · overrides `proxy-addr ^2.0.8` e `uuid ^11.1.1` · `smol-toml` 1.9.0 · `bun audit --audit-level=high` virou gate no `ci.yml` · inversão de dependência de 8.4 (`questionHash` → `core/rag.ts`) · `src/architecture.test.ts` (`core/` sem `lib/`/`adapters/`, `adapters/` sem `app/`) · ADRs 0002–0010 restaurados do git (`3e8f9b3^`), 0011 e 0012 **reconstruídos do código** (retroativos), 0016 (`lib/` transversal — 8.1) · `docs/arch/ARQUITETURA-FABRIC-RAG.md` (8.2) · `seed-test-db.sh` sem as tabelas dropadas.
+>
+> **Ainda abertos:** 2.2/10.3 (14 arquivos > 300 linhas; `state.ts` 1008, `app.tsx` 811), 8.1 migração física de `lib/deps|provision|exec` (incremental), linter do Biome (~400 achados sem triagem), QP-4/QP-5, 4.1/4.2/6.x (infra), `seed-test-db.sh` ainda usa colunas inexistentes (`email`, `password_hash`).
+
+> **Sprint 2 (achados N-1…N-10) — 2026-10-06:** ✅ **N-1** (`claimAttempt` atômico em `verifyLogin` e `consumeSecurityCode`) · ✅ **N-2** (`consume` por `rowCount`) · ✅ **N-3** (`devCode` só com `NIO_ALLOW_ECHO=1`; gateway recusa subir em echo sem opt-in) · ✅ **N-4** (IP = último salto do `X-Forwarded-For`; `NIO_TRUSTED_PROXIES=n`) · ✅ **N-5** (throttle assíncrono em Postgres — `auth_throttle`, migration `0016`, `ThrottleStore`; limite de falhas por IP; tetos de nome/senha e de atrasos pendentes; SMS falha fechado, login falha aberto) · ✅ **N-6** (`USER node`, `read_only`, `cap_drop ALL`, `no-new-privileges` — **não validado em runtime**, docker fora do ar) · ✅ **N-7 + QP-4 + QP-5** (`assertAuthSecrets` no boot, `NIO_JWT_LEGACY=0`, aviso do fallback do OTP) · ✅ **N-9** (`auditableName`: nome inexistente vira impressão HMAC) · ✅ **N-10** (timeouts, `maxConnections`). ✅ **N-8** (token por cliente: `gateway_clients`, migration `0017`, `nio_gw_…` com só o SHA-256 no banco, revogação individual com cache de 30 s, `clients-cli create|list|revoke`, `NIO_GATEWAY_LEGACY_TOKEN=0` desliga o token compartilhado). **Sprint 2 concluída.** Provas: `login-race.integration.test.ts`, `throttle-store.integration.test.ts` (Postgres real).
+
+> **Organização interna — 2026-10-06 (ADR 0016, execução):** `lib/` deixou de importar `adapters/`, `gateway/` e `tools/` (travado em `architecture.test.ts`). Movidos (imports reescritos por ferramenta, `tsc` + 1192 testes + build + smoke dos binários verdes): CLI-only de `lib/` → `cli/support/` (prompts, spinner, open-url, telemetry, ide-tasks, dotfiles, headroom) e `cli/auth/` (gateway-client, gateway-process, nio-config, n8n-config, fabric-config) · `tools/` plano → `tools/{fabric,session,env,task,lang}/` · `src/config.ts` → `src/project-config.ts` · `scripts/` → `db/ test/ dev/ ci/` · código morto removido (`lib/cowork-extension`, `lib/duration`) · `.nio-lang.json` (artefato do `nio lang`) fora do versionamento · README regenerado (60 → 79 comandos). **Em aberto (decisão do dono):** `security_config.json` + `security_audits/` (sobra de ferramenta Python, fora do domínio) · `opencode.json` com `shell: powershell` · skills `noclaf-flow`/`new-dependency` com nome do rebrand antigo · `CLAUDE.md`/`AGENT.md` versionados apontando para `AGENTS.md` (ignorado).
+
 ## Como usar
 
 - **Severidade** segue a mesma escala da análise: CRÍTICO / ALTO / MÉDIO / BAIXO / INFO.
@@ -56,9 +68,9 @@ Todos os itens desta seção foram resolvidos em 2026-09-19 — ver [§ Resolvid
 | `src/tui/app.test.tsx` | 393 | 393 |
 | `src/gateway/index.ts` | 391 | 391 |
 | `src/cli/commands/sync.ts` | 377 | 377 |
-| `src/config.ts` | 343 | 343 |
+| `src/project-config.ts` | 343 | 343 |
 | `src/tui/state.test.ts` | 339 | 424 |
-| `src/lib/auth/nio-config.ts` | 331 | 331 |
+| `src/cli/auth/nio-config.ts` | 331 | 331 |
 | `src/cli/commands/docs/content.ts` | 308 | 308 |
 | `src/adapters/pg/client.ts` | 304 | 304 |
 
@@ -129,7 +141,7 @@ O comentário adicionado (formalizando a decisão de `NIO_DATABASE_SSL=false`) n
 **Ação**: se o Portainer redeployou o gateway por causa desse commit, foi um restart sem mudança funcional — nada a corrigir, só confirmar que não houve efeito colateral (ex. downtime inesperado).
 
 ### 6.4 TLS Postgres real em produção [AÇÃO NECESSÁRIA — já era pendência antes da sprint]
-Ver 4.2 acima — o comentário só formaliza a decisão aceita hoje (`NIO_DATABASE_SSL=false` na LAN, cert self-signed). O tooling pra ligar TLS de verdade já existe (`scripts/db-tls-setup.sh`, CA interna) — falta só executar em prod. Não é uma pendência criada por esta sprint, mas segue sem dono.
+Ver 4.2 acima — o comentário só formaliza a decisão aceita hoje (`NIO_DATABASE_SSL=false` na LAN, cert self-signed). O tooling pra ligar TLS de verdade já existe (`scripts/db/db-tls-setup.sh`, CA interna) — falta só executar em prod. Não é uma pendência criada por esta sprint, mas segue sem dono.
 
 ### 6.5 `AGENTS.md` — não é uma pendência de prod
 `AGENTS.md` está no `.gitignore` (`/AGENTS.md`) — nunca entra em `git push`, nunca chega no CI nem em prod por definição. É config local do harness do Claude Code (dev tooling), sem efeito no app rodando. Registrado aqui só pra não ser confundido com um item pendente — não precisa de ação em prod.
@@ -158,6 +170,8 @@ JWT_SECRETS=                   # remove — só 1 segredo ativo, kid não é mai
 ```
 
 Redeploy de novo. Fluxo documentado em `.env.example:42-46`.
+
+**1b. Fechar o ciclo (QP-4)** — depois que o último token antigo expirar (ou após `nio logout --all` do time): `NIO_JWT_LEGACY=0` no stack + remover `JWT_SECRET`. Sem isso, um `JWT_SECRET` comprometido continua forjando token sem `kid`. Opcional mas recomendado: `OTP_HMAC_SECRET=<openssl rand -base64 32>` (QP-5).
 
 **2. Senha do Postgres (`nio_cli_user` / `nio_gw_user`)**
 
@@ -191,8 +205,8 @@ Atualiza no Portainer + no lado do consumidor externo do gateway (fora deste rep
 **4. TLS real do Postgres (H-2) — só se a decisão aceita em 6.4 mudar**
 
 ```bash
-NIO_HOST=<ip-ou-hostname-do-postgres> bash scripts/db-tls-setup.sh init
-bash scripts/db-tls-setup.sh server "$NIO_HOST"
+NIO_HOST=<ip-ou-hostname-do-postgres> bash scripts/db/db-tls-setup.sh init
+bash scripts/db/db-tls-setup.sh server "$NIO_HOST"
 ```
 
 Segue as instruções que o próprio script imprime (`postgresql.conf`, `pg_hba.conf`, reiniciar o Postgres). Por fim, no stack:
@@ -246,13 +260,13 @@ O `AGENT.md` descreve a arquitetura hexagonal como `core/` · `app/` · `adapter
 
 O problema não é o tamanho, é a mistura de camadas num único balde:
 - **Lógica de app**: `lib/deps/` (scan e install de dependências), `lib/provision/`, `lib/exec/` (map-reduce, plan-delegate, qwen-client)
-- **Adapter puro**: `lib/auth/gateway-client.ts` (HTTP), `lib/skills/skills-cache.ts` (rede + zip + cache em disco)
+- **Adapter puro**: `cli/auth/gateway-client.ts` (HTTP), `lib/skills/skills-cache.ts` (rede + zip + cache em disco)
 - **Utilitário legítimo**: `lib/proc.ts`, `lib/colors.ts`, `lib/duration.ts`, `lib/tool-result.ts`
 
 36 arquivos não-teste de `lib/` fazem IO (`node:fs`, `node:child_process`, `fetch`). Na prática existe um bypass do hexágono do tamanho de um quarto do repositório — o que não invalida a disciplina de `core/` (que está limpa, ver § 8.4), mas significa que a regra documentada descreve 3/4 do código.
 
 **Ação [decisão]**: escolher uma das três, não deixar implícito.
-1. Realocar por camada: `lib/deps|provision|exec` → `app/`, `lib/auth/gateway-client|skills-cache` → `adapters/`, e `lib/` fica só com utilitário sem domínio (~1.500 linhas).
+1. Realocar por camada: `lib/deps|provision|exec` → `app/`, `cli/auth/gateway-client|skills-cache` → `adapters/`, e `lib/` fica só com utilitário sem domínio (~1.500 linhas).
 2. Declarar `lib/` como camada legítima no `AGENT.md`, com regra explícita do que entra (utilitário transversal sem regra de negócio) e do que não entra.
 3. Aceitar como está e remover a alegação de hexágono estrito do `AGENT.md`.
 
@@ -353,8 +367,8 @@ Remedição do item 2.2 em 2026-09-29:
 | 595 | `src/tui/components.tsx` |
 | 394 | `src/gateway/index.ts` |
 | 377 | `src/cli/commands/sync.ts` |
-| 356 | `src/lib/auth/nio-config.ts` |
-| 351 | `src/config.ts` |
+| 356 | `src/cli/auth/nio-config.ts` |
+| 351 | `src/project-config.ts` |
 | 308 | `src/cli/commands/docs/content.ts` |
 | 304 | `src/adapters/pg/client.ts` |
 
@@ -496,7 +510,7 @@ Confirmado: 15 arquivos citados (ADR 0011/0012, `implemented.md`, `backlog.md`, 
 **Commit**: pendente (working tree, ainda não commitado).
 
 ### 4.2 Postgres TLS sem verificação de certificado no deploy [ALTO — documentação da decisão] — ✅ 2026-09-19
-**Fix**: comentário expandido em `docker/docker-compose.deploy.yml` formalizando `NIO_DATABASE_SSL=false` como decisão aceita (não pendência esquecida), referenciando que o tooling (`scripts/db-tls-setup.sh`) já existe e falta só execução em prod.
+**Fix**: comentário expandido em `docker/docker-compose.deploy.yml` formalizando `NIO_DATABASE_SSL=false` como decisão aceita (não pendência esquecida), referenciando que o tooling (`scripts/db/db-tls-setup.sh`) já existe e falta só execução em prod.
 **Nota**: isso documenta a decisão, **não liga o TLS**. Ligar de verdade em prod segue pendente — ver [§ 6.4](#6-tasks-pendentes-em-produção--não-reverberam-sozinhas).
 **Commit**: pendente (working tree, ainda não commitado).
 

@@ -491,7 +491,7 @@ Health check — não requer token nem Bearer.
 
 - **Portainer URL:** `https://192.168.0.160:9443/#!/3/docker/stacks/nio_cli277?id=106`
 - **Stack ID:** 106
-- **Imagem do gateway:** `ghcr.io/hugoreiis12-png/nio-gateway` — tag bumpada automaticamente pelo `.github/workflows/image.yml` a cada release (`v*`); confira a tag atual em `docker/docker-compose.deploy.yml`, não hardcode aqui
+- **Imagem do gateway:** `ghcr.io/hugoreiisc12/nio-gateway` — tag bumpada automaticamente pelo `.github/workflows/image.yml` a cada release (`v*`); confira a tag atual em `docker/docker-compose.deploy.yml`, não hardcode aqui
 
 ### Arquivos de Compose
 
@@ -507,7 +507,7 @@ Health check — não requer token nem Bearer.
 
 1. Acessar Portainer → Stacks → Add stack
 2. Nome: `nio_cli277`
-3. Source: `Repository` → URL: `https://github.com/hugoreiis12-png/NIO-CLI-.git`
+3. Source: `Repository` → URL: `https://github.com/hugoreiisc12/NIO-CLI.git`
 4. Compose path: `docker/docker-compose.deploy.yml`
 5. Definir variáveis de ambiente na aba "Environment variables"
 6. Deploy stack

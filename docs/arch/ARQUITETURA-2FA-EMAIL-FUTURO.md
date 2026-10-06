@@ -246,7 +246,7 @@ NIO_EMAIL_BODY_TEMPLATE={"from":"{from}","to":"{to}","subject":"{subject}","text
 
 ### A9 — CLI
 
-- `src/lib/auth/gateway-client.ts` — tipos: `SmsMode` → `DeliveryMode`,
+- `src/cli/auth/gateway-client.ts` — tipos: `SmsMode` → `DeliveryMode`,
   `ChallengeStarted.smsMode` → `deliveryMode`; `enable(token, email)`.
 - `src/cli/commands/security.ts`:
   - `runEnable` — prompt `"E-mail para receber os códigos"` + valida formato.
@@ -290,7 +290,7 @@ src/core/messaging.ts        src/core/types.ts        src/core/repositories.ts
 src/adapters/pg/user-repository.ts        src/adapters/pg/login-challenge-repository.ts
 src/gateway/index.ts         src/gateway/throttle.ts
 src/gateway/services/login.ts             src/gateway/services/security.ts
-src/lib/auth/otp.ts          src/lib/auth/gateway-client.ts
+src/lib/auth/otp.ts          src/cli/auth/gateway-client.ts
 src/cli/commands/security.ts              src/cli/commands/auth.ts
 db/schema.sql                .env.example               package.json
 docker/docker-compose.yml    docker/docker-compose.deploy.yml

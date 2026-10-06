@@ -250,7 +250,7 @@ arquivos o chamam:
 ```
 $ grep -rn "secure-file" src --include=*.ts | grep -v test
 src/adapters/fabric/refresh-store.ts:12
-src/lib/auth/nio-config.ts:16
+src/cli/auth/nio-config.ts:16
 ```
 
 Os dois arquivos que guardam credencial de sessão ficaram de fora:

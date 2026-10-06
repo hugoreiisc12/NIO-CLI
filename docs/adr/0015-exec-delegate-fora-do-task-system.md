@@ -24,7 +24,7 @@ O JSON emitido é o shape `ExecJob`. Absorver trocaria por `Task`, quebrando um
 aplicativo que não faz parte deste release.
 
 **2. Hoje não exige banco nem autenticação.** `nio exec` roda contra um worktree
-local sem tocar no Postgres, e `tools/delegate-exec.ts` nem lê `ctx.user`. Como
+local sem tocar no Postgres, e `tools/task/delegate-exec.ts` nem lê `ctx.user`. Como
 `tasks.user_id` é `NOT NULL`, absorver passaria a exigir usuário logado e conexão
 de banco num fluxo que hoje funciona offline.
 

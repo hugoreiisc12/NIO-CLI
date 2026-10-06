@@ -123,8 +123,8 @@ detectado, instalados, hint, override. Placeholder pros subcomandos `next` /
 **Editar:** `src/lib/clients/client-install.ts`, `src/lib/clients/client-configs.ts`,
 `src/lib/clients/targets.ts`, `src/lib/clients/autopull.ts`, `src/cli/flows/clients.ts`,
 `src/cli/commands/init/clients-step.ts`, `src/cli/commands/init/provision-step.ts`,
-`src/cli/commands/init/index.ts`, `src/config.ts`, `src/cli.ts`,
-`scripts/gen-reference.ts`, `README.md`, `docs/PROGRESSO.md`.
+`src/cli/commands/init/index.ts`, `src/project-config.ts`, `src/cli.ts`,
+`scripts/dev/gen-reference.ts`, `README.md`, `docs/PROGRESSO.md`.
 **Reusar:** `isBinaryInstalled`, `ensureClientInstalled`, `installCodexGlobal`,
 `codexTarget`/`toCodexDocs`, `planCodexUpdate`, `env()`/`envName()`.
 
@@ -145,7 +145,7 @@ bunx tsc --noEmit && bun test
 ## PARTE B — Headroom como proxy Docker — ✅ FASE 1 FEITA (31 ago 2026)
 
 > Implementada como **obrigatória** pro `nio ai` — [ADR 0007](../adr/0007-headroom-proxy-obrigatorio.md).
-> `headroom/docker-compose.yml` (shipado), `src/lib/headroom.ts`, `src/app/ai-client.ts`,
+> `headroom/docker-compose.yml` (shipado), `src/cli/support/headroom.ts`, `src/app/ai-client.ts`,
 > `planOpencodeProvider` no `client-configs.ts`, `nio docker headroom {up,down,status}`.
 > Spike confirmou: Zen/big-pickle roteia pelo Headroom via `OPENAI_TARGET_API_URL`.
 > O esboço abaixo (contexto histórico):
@@ -157,7 +157,7 @@ bunx tsc --noEmit && bun test
   `HEADROOM_OUTPUT_SHAPER=1`, `HEADROOM_UPDATE_CHECK=off`, volume `headroom_cache`.
   `extra_hosts` p/ Linux.
 - **`dev:headroom`** script.
-- **`src/lib/headroom.ts`** — `HEADROOM_PORT` (`NIO_HEADROOM_PORT`, default 8787),
+- **`src/cli/support/headroom.ts`** — `HEADROOM_PORT` (`NIO_HEADROOM_PORT`, default 8787),
   `HEADROOM_URL` (`http://127.0.0.1:8787/v1` no host,
   `http://host.docker.internal:8787/v1` nos containers), `headroomHealthy()`.
 - **Wiring**: quando um agente é configurado, o `baseURL` do provider aponta pro

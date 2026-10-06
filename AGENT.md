@@ -55,8 +55,16 @@ core/:        types.ts (entidades + enums do schema)
 adapters/:    pg/ (Postgres, driver `pg`)  ide/ (vscode)  pkg/ (npm,pip,…)
               docker/  sms/ (HTTP genérico)  skills/ (cache do repo NIO-SKILLS)  lang/
               agent/ (StepExecutor sobre o opencode serve)
+lib/:         camada TRANSVERSAL (ADR 0016): utilitário sem regra de negócio + subdomínios
+              (clients/ deps/ docker/ exec/ provision/ skills/); `core/` não importa daqui,
+              e `lib/` não importa adapters/gateway/tools/cli (gate: src/architecture.test.ts)
+cli/:         commands/ (um por comando) · flows/ · auth/ (cliente do gateway + config do usuário)
+              · support/ (prompts, spinner, telemetry…) · ui/ · copy/
+tools/:       tools MCP por domínio: fabric/ session/ env/ task/ lang/ (+ index.ts registra)
+scripts/:     db/ (migrate, ping, TLS) · test/ (env de teste) · dev/ (mocks, gen-docs) · ci/
 gateway/:     index.ts (HTTP nativo) · edge-filter.ts · middleware/ · services/
 profiles/:    catálogo dos 6 perfis (hardcoded no fonte)
+Fabric/RAG:   tools/fabric-* · app/dax-* · adapters/fabric — ver docs/arch/ARQUITETURA-FABRIC-RAG.md
 ```
 
 - **Regra do hexágono:** nenhum arquivo de `core/` importa client de banco/IO

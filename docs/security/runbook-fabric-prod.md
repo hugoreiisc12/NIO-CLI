@@ -139,7 +139,7 @@ nio fabric status --json            # {"configured":true,"status":"ok","workspac
 # dentro de uma sessão: nio_fabric_workspaces → nio_fabric_datasets → nio_fabric_query "EVALUATE ROW(\"x\",1)"
 ```
 
-Testes locais do subsistema: `bun test src/adapters/fabric src/lib/auth/fabric-config.test.ts src/tools/fabric-*.test.ts`.
+Testes locais do subsistema: `bun test src/adapters/fabric src/cli/auth/fabric-config.test.ts src/tools/fabric`.
 
 ---
 

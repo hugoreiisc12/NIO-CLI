@@ -333,7 +333,7 @@ Operações do CLI, **sem o binário na frente** (declarado no cabeçalho da tab
 Gerada da fonte por `npm run gen:docs`. Ajuda de qualquer comando: `nio <cmd> --help`.
 
 <!-- COMMANDS:START -->
-<!-- gerado por `bun run gen:docs` — não edite à mão. binário `nio`, 60 comandos. -->
+<!-- gerado por `bun run gen:docs` — não edite à mão. binário `nio`, 79 comandos. -->
 
 | Comando | Descrição |
 | --- | --- |
@@ -372,11 +372,23 @@ Gerada da fonte por `npm run gen:docs`. Ajuda de qualquer comando: `nio <cmd> --
 | `docs` | Documentação completa da CLI (terminal ou página com --html) |
 | `exec` | Delega a implementação ao Qwen (vLLM local) num worktree e aguarda. |
 | `exec-status <jobId>` | Estado de um job de execução (`nio exec`), em JSON |
+| `fabric` | Integração com o Power BI/Fabric |
+| `fabric login` | Login interativo no navegador (device code) — necessário para dataset com RLS |
+| `fabric logout` | Esquece o login interativo e volta à credencial do config.env |
+| `fabric metrics` | Taxa de erro das consultas ao Fabric, por categoria |
+| `fabric rag` | Estado do RAG de DAX (embedder + acervo) |
+| `fabric rag status` | Mostra se o embedder está instalado e quanto do modelo está indexado |
+| `fabric schema` | Schema do modelo semântico no índice vetorial |
+| `fabric schema sync` | Lê o schema via INFO.VIEW.* e indexa (pula se nada mudou) |
+| `fabric status` | Preflight: confere as credenciais AZURE_* e lista workspaces |
 | `init` | Cria nio.json no diretório atual e materializa o ambiente da sessão |
 | `lang` | Conhecimento/config das linguagens (nio-lang) |
 | `lang sync` | Baixa/atualiza o cache de conhecimento das linguagens em ~/.nio/lang |
 | `login` | Autentica via nio-gateway (túnel HTTP) e salva a sessão localmente (JWT) |
 | `logout` | Encerra a sessão local e revoga a auth_session no banco |
+| `n8n` | MCP nativo da instância n8n |
+| `n8n connect` | Conecta/renova o MCP nativo do n8n e redetecta as tools da instância |
+| `n8n status` | Mostra a credencial configurada e as tools detectadas |
 | `open` | Abre a IDE da sessão ativa na pasta do projeto |
 | `plan` | Roda o Qwen (vLLM local) sobre o projeto e escreve/refina o plan.md da raiz. |
 | `register` | Cria um novo usuário via nio-gateway e já entra (login) |
@@ -392,9 +404,16 @@ Gerada da fonte por `npm run gen:docs`. Ajuda de qualquer comando: `nio <cmd> --
 | `sessions list` | Lista as suas sessões |
 | `sessions pause <id>` | Pausa uma sessão |
 | `skills` | Skills, commands e agents do nio (lidos do repo aberto via cache) |
+| `skills pull` | Baixa/atualiza o cache do repo de skills (força o fetch do zipball) |
 | `skills status` | Lista os docs do repo de skills (cache local ~/.nio/skills) |
 | `start` | Conduz a esteira: config → gateway → login → sessão → OpenCode |
 | `sync` | Instala/atualiza skills, commands e agents nos clientes configurados, a partir do bundle (idempotente); checa atualização do pacote |
+| `task` | Execução durável: cria e acompanha tasks (run/list/show/cancel) |
+| `task approve <id>` | Libera a ferramenta que travou a task e devolve à fila |
+| `task cancel <id>` | Cancela uma task que ainda não terminou |
+| `task list` | Lista as suas tasks |
+| `task run <goal...>` | Cria uma task a partir de um objetivo e enfileira |
+| `task show <id>` | Mostra a task e a trilha de steps |
 | `validate-plan` | Lê o plan.md da raiz e roda o Qwen (vLLM local) para julgar se o plano precisa de uma spec antes de implementar. |
 | `whoami` | Mostra o usuário autenticado |
 <!-- COMMANDS:END -->
@@ -451,7 +470,7 @@ O servidor `nio-cli` expõe as tools de ambiente v2 (todas passam pelo
 `SessionManager` e exigem `nio login`):
 
 <!-- TOOLS:START -->
-<!-- gerado por `bun run gen:docs` — não edite à mão. 10 tools. -->
+<!-- gerado por `bun run gen:docs` — não edite à mão. 18 tools. -->
 
 ### Tools que espelham o CLI — prefixo `nio_`
 
@@ -461,11 +480,19 @@ O servidor `nio-cli` expõe as tools de ambiente v2 (todas passam pelo
 | `env_detect_deps` | Roda UM ciclo do watcher de dependências sobre a pasta da sessão: escaneia os manifests (package.json, requirements.txt, Cargo.toml), detecta o que está declarado mas não instalado e registra um evento por dependência nova (idempotente). |
 | `env_materialize` | Re-materializa o ambiente de uma sessão existente a partir do seu perfil: garante os toolchains de novo, re-resolve os MCPs e reescreve o `config` em `sessions.config`. |
 | `exec_status` | Estado de uma execução delegada (`nio_delegate_exec`): running \| done \| failed, com o resumo do agente, os arquivos alterados e os checks determinísticos (tamanho, lint, build, testes). |
+| `fabric_ask` | Responde uma pergunta em linguagem natural com dados de um modelo semântico do Power BI/Fabric: gera o DAX, executa via executeQueries e devolve as linhas. |
+| `fabric_datasets` | Lista os datasets (modelos semânticos) de um workspace do Power BI/Fabric — descoberta para achar o `dataset_id` do `nio_fabric_query`. |
+| `fabric_measure` | Devolve a DEFINIÇÃO das medidas do modelo semântico: nome, tabela e a fórmula DAX exata. |
+| `fabric_query` | Executa um DAX (DEFINE/EVALUATE) contra um dataset do Power BI/Fabric e devolve as linhas. |
+| `fabric_schema_sync` | Reindexa o schema (tabelas, colunas, medidas) de um modelo semântico do Power BI/Fabric no índice vetorial que dá contexto ao `nio_fabric_ask`. |
+| `fabric_workspaces` | Lista os workspaces (grupos) do Power BI/Fabric visíveis ao service principal — descoberta para achar o `workspace_id` que o `nio_fabric_query`/`nio_fabric_datasets` precisam. |
+| `pbi_local` | Descobre o endpoint XMLA do Power BI Desktop aberto nesta máquina (Analysis Services local). |
 | `plan` | Roda o Qwen (vLLM local, via API) sobre a raiz do projeto e escreve/refina o `plan.md` de rascunho pré-SDD. |
 | `profile_get` | Consulta o catálogo de perfis de ambiente (hardcoded na CLI). |
 | `session_activate` | Ativa uma sessão de ambiente do usuário por id (o prefixo do UUID basta). |
 | `session_create` | Cria uma sessão de ambiente pro usuário autenticado e materializa o perfil escolhido: garante os toolchains, resolve os MCPs e persiste o `config` em `sessions.config`. |
 | `session_list` | Lista as sessões de ambiente do usuário autenticado (mais recentes primeiro), com id, nome, perfil, status e o `config` materializado. |
+| `task_approve` | Libera a ferramenta que travou uma task em `waiting_approval` e devolve a task à fila; o worker retoma do passo que parou. |
 | `validate_plan` | Lê o `plan.md` da raiz do projeto e roda o Qwen (vLLM local, via API) para julgar se o plano é complexo o bastante para virar uma spec SDD antes de implementar. |
 <!-- TOOLS:END -->
 

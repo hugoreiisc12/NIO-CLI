@@ -2,14 +2,14 @@
 
 Pasta de rastreio da auditoria de segurança e do trabalho que ela gerou.
 
-> **Nota (2026-09-19)**: os documentos-fonte listados abaixo foram removidos do
-> repositório no commit `3e8f9b3` (junto com `docs/adr/0002`–`0010`) — não
-> existem mais no working tree nem no histórico git. A tabela de status logo
-> abaixo é o único registro que sobrou; foi parcialmente reverificada por
-> auditoria externa em 2026-09-19 (JWT `kid`-rotation, checagem de `sub`,
-> `MAX_SESSIONS_PER_USER`, `breach-check.ts`, `db_roles` — todos conferidos
-> diretamente no código e batendo com o que a tabela alega). Links convertidos
-> em texto simples pra não apontar pra arquivos inexistentes.
+> **Nota (2026-10-05)**: `docs/adr/0002`–`0010` foram apagados no commit
+> `3e8f9b3` mas **existem no histórico** e foram restaurados. Os ADRs `0011` e
+> `0012` nunca estiveram neste repositório — foram **reconstruídos a partir do
+> código** (marcados "retroativa"). Seguem inexistentes e sem cópia: `lote5-cripto-arquitetura.md`,
+> `implemented.md`, `ops-actions.md`, `backlog.md`, `dev-tasks.md`, `task-user-*.md`,
+> `i1-i2-analysis.md`, `i2-login-por-ip.md`, `sp1-trilha-auth.md`, `third-pass.md`,
+> `db-tls.md`, `security-audit-2026-09.md`. A tabela de status abaixo é o único registro
+> deles; foi parcialmente reverificada contra o código em 2026-09-19.
 
 | Arquivo | O quê |
 |---------|-------|
@@ -98,13 +98,13 @@ Detalhe de cada um, com diff de fix e teste de regressão: [`fourth-pass.md`](fo
 | L-6 | Baixa | JWT sem `iss`/`aud` | ✅ feito | força re-login (com H-1) | **código pronto** |
 | I-1 | Info | Código `UNLICENSED` publicado público no npm | ⏳ config staged | ⏳ **você** — criar org `nio-cli` + mover repos | task-user-i1-registry.md |
 | I-2 | Info | `ips_using` — campo morto | ✅ feito | migration `0006` em prod | virou feature "login por IP" — auditoria de IP (`login_ip_events`), sem enforcement. ADR 0011 §F. |
-| I-3 | Info | base image sem digest / sem runner de migração | ✅ feito | rodar `db:migrate --baseline` em prod | **código pronto** (digest pinado + `scripts/migrate.ts`) |
+| I-3 | Info | base image sem digest / sem runner de migração | ✅ feito | rodar `db:migrate --baseline` em prod | **código pronto** (digest pinado + `scripts/db/migrate.ts`) |
 | §4.6 | Vers. | nomes de tool MCP sem trava | ✅ feito | — | snapshot test |
 | §4.2 | Vers. | SDK vs binário `opencode` (skew) | ✅ feito | — | aviso no boot do `nio ai` |
 | §4.1 | Vers. | CLI ↔ bundle de skills sem contrato | ✅ feito | ⏳ **você** — `nio-skills.json` no repo | task-user-lote4.md |
 | §4.3 | Vers. | `JWT_SECRET` 3 papéis, sem rotação | ✅ feito | — | Lote 5: `OTP_HMAC_SECRET` (F1 D) + `JWT_SECRETS`/`kid` (F2 E) |
 | §4.4 | Vers. | gateway ↔ CLI sem header de protocolo | ⏸️ adiado | — | YAGNI — reabre se a API crescer |
-| §4.5 | Vers. | migrations sem runner | ✅ feito | — | = I-3 (`scripts/migrate.ts`) |
+| §4.5 | Vers. | migrations sem runner | ✅ feito | — | = I-3 (`scripts/db/migrate.ts`) |
 | SP-1 | 2ª pass | Trilha de auth só em stderr (sem histórico) | ✅ feito | — | `auth_events` (ADR 0012) |
 | SP-2 | 2ª pass | `sub` do token não conferido vs dono da sessão | ✅ feito | — | ⚠️ a checagem só roda se `sub` for string — escape por tipo, ver **QP-6** |
 | SP-3 | 2ª pass | `MIN_PASSWORD_LENGTH` só no CLI | ✅ feito | — | enforçado no gateway |

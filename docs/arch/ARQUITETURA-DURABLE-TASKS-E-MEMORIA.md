@@ -34,7 +34,7 @@ descrito no escopo. **F1 absorve isso** — ver § 4.8. Não vamos manter dois
 sistemas de job.
 
 **1.3 — Só existe um daemon: o `nio-gateway`.**
-`ensureGatewayRunning()` (`lib/auth/gateway-process.ts:102`) sobe um processo
+`ensureGatewayRunning()` (`cli/auth/gateway-process.ts:102`) sobe um processo
 detached com `child.unref()`. "O cliente pode fechar e a task continua" depende
 de um processo assim. **Decisão tomada: `nio-worker` separado** (§ 3).
 
