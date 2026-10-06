@@ -17,6 +17,8 @@ export interface RequestContext {
   traceId: string;
   method: string;
   path: string;
+  /** Cliente do gateway que fez a request (N-8) — preenchido depois do token. */
+  client?: string;
 }
 
 /** Monta o contexto da request reaproveita `x-nio-trace-id` se já veio de um hop anterior (ex.: Kong/Edge Filter externo). */
@@ -73,19 +75,37 @@ export function extractGatewayToken(req: FilterableRequest): string | null {
 }
 
 /**
+ * Quantos proxies confiáveis (Kong) ficam na frente do gateway. `NIO_TRUSTED_PROXIES=n`
+ * explícito; senão `NIO_TRUST_PROXY=1` (legado) vale 1 salto; senão 0 (não confia em XFF).
+ */
+function trustedHops(): number {
+  const explicit = process.env.NIO_TRUSTED_PROXIES?.trim();
+  if (explicit) {
+    const n = Number(explicit);
+    return Number.isInteger(n) && n > 0 ? n : 0;
+  }
+  return /^(1|true|yes|on)$/i.test((process.env.NIO_TRUST_PROXY ?? '').trim()) ? 1 : 0;
+}
+
+/**
  * IP do cliente (auditoria de login — ADR 0011 §F). Default: o peer da conexão
- * (`socket.remoteAddress`). Com `NIO_TRUST_PROXY=1`: o 1º valor de
- * `X-Forwarded-For` — **só ligue isso quando o Kong for a ÚNICA entrada do
- * gateway** (senão qualquer um forja o header). Normaliza IPv4-mapeado.
+ * (`socket.remoteAddress`). Com proxy confiável: o IP que o **último** proxy
+ * confiável anexou ao `X-Forwarded-For` (`lista[len - n]`) — o 1º valor é o que o
+ * próprio cliente mandou e é forjável mesmo atrás do Kong, que só **acrescenta**.
+ * Lista menor que `n` = o header não passou pelos proxies → cai no peer. Só ligue
+ * com o Kong como ÚNICA entrada do gateway. Normaliza IPv4-mapeado.
  */
 export function clientIp(
   req: FilterableRequest & { socket?: { remoteAddress?: string } },
 ): string | null {
   let ip: string | null = null;
-  const trust = /^(1|true|yes|on)$/i.test((process.env.NIO_TRUST_PROXY ?? '').trim());
-  if (trust) {
-    const xff = firstHeaderValue(req.headers['x-forwarded-for']);
-    if (xff) ip = xff.split(',')[0]!.trim() || null;
+  const hops = trustedHops();
+  if (hops > 0) {
+    const chain = (firstHeaderValue(req.headers['x-forwarded-for']) ?? '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (chain.length >= hops) ip = chain[chain.length - hops]!;
   }
   ip ??= req.socket?.remoteAddress ?? null;
   return ip ? ip.replace(/^::ffff:/, '') : null;

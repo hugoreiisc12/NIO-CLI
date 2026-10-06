@@ -8,6 +8,7 @@
  * - `DocIndex`   → documentação oficial vendorizada (grounding da geração).
  * - `DaxMemory`  → templates de consultas que **deram certo** (cache semântico).
  */
+import { createHash } from 'node:crypto';
 
 /** Dimensão do embedding — casada com `multilingual-e5-base` e com a coluna `vector(768)`. */
 export const EMBEDDING_DIMS = 768;
@@ -113,4 +114,14 @@ export interface DaxMemory {
   remember(template: DaxTemplate, embedding: number[]): Promise<RagResult<number>>;
   /** Contabiliza o reuso — alimenta métricas de hit/miss. */
   markHit(id: number): Promise<RagResult<void>>;
+}
+
+/**
+ * Chave do hit exato. Inclui o escopo porque **o mesmo texto em outro modelo
+ * semântico é outra pergunta** — um DAX válido num dataset é inválido noutro.
+ */
+export function questionHash(questionNorm: string, workspaceId: string, datasetId: string): string {
+  return createHash('sha256')
+    .update(`${workspaceId}\u0000${datasetId}\u0000${questionNorm}`)
+    .digest('hex');
 }

@@ -5,13 +5,21 @@ import {
   __resetJwtSecrets,
   currentPepperId,
   pepperFor,
+  assertAuthSecrets,
   otpHmacSecret,
   jwtSigningKey,
   jwtVerifyKey,
   NO_PEPPER,
 } from './secrets.js';
 
-const KEYS = ['NIO_PEPPERS', 'NIO_PEPPER', 'OTP_HMAC_SECRET', 'JWT_SECRET', 'JWT_SECRETS'];
+const KEYS = [
+  'NIO_PEPPERS',
+  'NIO_PEPPER',
+  'OTP_HMAC_SECRET',
+  'JWT_SECRET',
+  'JWT_SECRETS',
+  'NIO_JWT_LEGACY',
+];
 const orig = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
 afterEach(() => {
   for (const k of KEYS) {
@@ -123,4 +131,40 @@ test('otpHmacSecret: OTP_HMAC_SECRET quando setado, senão JWT_SECRET', () => {
   expect(otpHmacSecret()).toBe(jwt);
   process.env.OTP_HMAC_SECRET = 'chave-do-otp-com-mais-de-32-caracteres!';
   expect(otpHmacSecret()).toBe('chave-do-otp-com-mais-de-32-caracteres!');
+});
+
+// ─── QP-4: kill-switch do JWT legado (sem kid) ──────────────────────
+
+test('QP-4: NIO_JWT_LEGACY=0 recusa token sem kid; kid continua verificando', () => {
+  process.env.JWT_SECRET = JWT_A;
+  process.env.JWT_SECRETS = `2026b:${JWT_B}`;
+  expect(jwtVerifyKey(undefined)).toBe(JWT_A); // default: compatível
+  process.env.NIO_JWT_LEGACY = '0';
+  expect(jwtVerifyKey(undefined)).toBeNull();
+  expect(jwtVerifyKey('2026b')).toBe(JWT_B);
+});
+
+// ─── N-7 / QP-5: segredos validados no boot ─────────────────────────
+
+test('N-7: JWT_SECRET legado fraco derruba o boot MESMO com JWT_SECRETS ativo', () => {
+  process.env.JWT_SECRET = 'curto';
+  process.env.JWT_SECRETS = `2026b:${JWT_B}`;
+  expect(() => assertAuthSecrets()).toThrow(/JWT_SECRET fraco/);
+});
+
+test('N-7: só JWT_SECRETS (sem legado) é válido; sem nenhum dos dois, lança', () => {
+  process.env.JWT_SECRETS = `2026b:${JWT_B}`;
+  delete process.env.JWT_SECRET;
+  expect(() => assertAuthSecrets()).not.toThrow();
+  delete process.env.JWT_SECRETS;
+  __resetJwtSecrets();
+  expect(() => assertAuthSecrets()).toThrow(/JWT_SECRET/);
+});
+
+test('QP-5: OTP_HMAC_SECRET curto lança; igual ao JWT_SECRET só avisa', () => {
+  process.env.JWT_SECRET = JWT_A;
+  process.env.OTP_HMAC_SECRET = 'curto';
+  expect(() => assertAuthSecrets()).toThrow(/OTP_HMAC_SECRET/);
+  process.env.OTP_HMAC_SECRET = JWT_A;
+  expect(() => assertAuthSecrets()).not.toThrow();
 });

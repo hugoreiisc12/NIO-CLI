@@ -59,7 +59,7 @@ function readEnv(): WhatsAppReadEnv {
 }
 
 /**
- * `echo` — endpoint em loopback (o mock `scripts/whatsapp-echo.ts`): NENHUM
+ * `echo` — endpoint em loopback (o mock `scripts/dev/whatsapp-echo.ts`): NENHUM
  * WhatsApp de verdade é acionado; o código só aparece no terminal do mock /
  * `~/.nio/whatsapp-echo-last.json`. `provider` — endpoint externo.
  * `unconfigured` — sem `WHATSAPP_*` (2FA indisponível).
@@ -67,6 +67,29 @@ function readEnv(): WhatsAppReadEnv {
 export type SmsMode = 'echo' | 'provider' | 'unconfigured';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', '0.0.0.0']);
+
+/**
+ * O modo `echo` devolve o OTP na resposta HTTP — só existe pra dev. Fail-closed:
+ * exige opt-in explícito (`NIO_ALLOW_ECHO=1`) e nunca vale com `NODE_ENV=production`.
+ * Sem isso, um `WHATSAPP_ENDPOINT_URL` em loopback esquecido em prod anularia o 2FA.
+ */
+export function echoAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.NIO_ALLOW_ECHO?.trim() === '1' && env.NODE_ENV !== 'production';
+}
+
+/** Campo `devCode` da resposta: o código só sai em modo `echo` **e** autorizado. */
+export function devCodeField(mode: SmsMode, code: string): { devCode?: string } {
+  return mode === 'echo' && echoAllowed() ? { devCode: code } : {};
+}
+
+/** Boot do gateway: backend `echo` sem opt-in é configuração perigosa → recusa subir. */
+export function assertEchoSafe(): void {
+  if (smsMode() !== 'echo' || echoAllowed()) return;
+  throw new Error(
+    'WHATSAPP_ENDPOINT_URL aponta pra loopback (modo echo): o OTP voltaria na resposta e o 2FA ' +
+      'não valeria nada. Use um provedor real, ou defina NIO_ALLOW_ECHO=1 (só dev, nunca com NODE_ENV=production).',
+  );
+}
 
 /** Classifica o backend ativo — a CLI usa pra avisar que está em modo echo. */
 export function smsMode(env: WhatsAppReadEnv = readEnv()): SmsMode {

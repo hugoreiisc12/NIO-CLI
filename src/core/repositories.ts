@@ -18,6 +18,7 @@ import type {
   DependencyType,
   LoginChallenge,
   ChallengePurpose,
+  GatewayClient,
 } from './types.js';
 
 /** Dados para criar um usuário. `password` é texto puro — o adapter hasheia (argon2id). */
@@ -87,10 +88,15 @@ export interface LoginChallengeRepository {
   create(input: NewLoginChallengeInput): Promise<LoginChallenge>;
   /** `null` se não existe. Não filtra por consumido/expirado — o serviço decide. */
   findById(id: string): Promise<LoginChallenge | null>;
-  /** `attempts = attempts + 1`, retorna o novo valor. */
-  incrementAttempts(id: string): Promise<number>;
-  /** `consumed_at = NOW()` — uso único. Idempotente. */
-  consume(id: string): Promise<void>;
+  /**
+   * Reserva UMA tentativa de forma atômica, **antes** de conferir o código: só
+   * incrementa se o desafio está vivo e `attempts < max`. Devolve o novo `attempts`,
+   * ou `null` se não coube (teto, consumido ou expirado). Ler-conferir-incrementar
+   * deixava N requisições paralelas passarem pelo teto.
+   */
+  claimAttempt(id: string, max: number): Promise<number | null>;
+  /** `consumed_at = NOW()` — uso único. `true` só pra quem consumiu de fato. */
+  consume(id: string): Promise<boolean>;
   /** Apaga os `expires_at < NOW()`. Best-effort de limpeza (sem cron). */
   deleteExpired(): Promise<void>;
 }
@@ -241,4 +247,44 @@ export interface DependencyEventRepository {
 
   /** Eventos da sessão, mais recentes primeiro. */
   listBySession(sessionId: string): Promise<DependencyEvent[]>;
+}
+
+/** Resultado de uma janela de rate limiting. */
+export interface HitResult {
+  ok: boolean;
+  /** ms até a janela reabrir (0 quando `ok`). */
+  retryAfterMs: number;
+}
+
+/**
+ * Contadores de rate limiting do gateway (N-5). Memória do processo em teste/dev;
+ * Postgres em produção (multi-réplica e sobrevive a restart). `now` (ms) só existe
+ * pro relógio injetável do backend em memória — o Postgres usa `NOW()`.
+ */
+export interface ThrottleStore {
+  /** Janela fixa: conta +1 em `key` e diz se ainda cabe em `limit` na janela de `windowMs`. */
+  hit(key: string, limit: number, windowMs: number, now?: number): Promise<HitResult>;
+  /** Como `hit`, mas **sem contar** — só consulta se `key` já estourou `limit`. */
+  peek(key: string, limit: number, now?: number): Promise<HitResult>;
+  /** +1 falha em `key`, esquecida `ttlMs` depois da última. Devolve o total. */
+  fail(key: string, ttlMs: number, now?: number): Promise<number>;
+  /** Falhas vivas de `key` (0 se expirou). */
+  failures(key: string, now?: number): Promise<number>;
+  /** Esquece `key`. */
+  clear(key: string): Promise<void>;
+  /** Descarta entradas expiradas. */
+  sweep(now?: number): Promise<void>;
+}
+
+/** Clientes autorizados do gateway (N-8). Só o SHA-256 do token chega aqui. */
+export interface GatewayClientRepository {
+  /** Falha se o nome já existe. */
+  create(name: string, tokenHash: string): Promise<GatewayClient>;
+  /** Cliente **não revogado** dono deste hash, ou `null`. */
+  findActiveByHash(tokenHash: string): Promise<GatewayClient | null>;
+  /** `last_used_at = NOW()`, no máximo 1×/min por cliente. Best-effort. */
+  touch(id: string): Promise<void>;
+  list(): Promise<GatewayClient[]>;
+  /** Revoga por id ou nome. `true` se revogou agora (false: não existe / já revogado). */
+  revoke(idOrName: string): Promise<boolean>;
 }

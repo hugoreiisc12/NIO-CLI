@@ -10,7 +10,16 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { setTimeout as sleep } from 'node:timers/promises';
 import { login, logout, logoutAll, verifyLogin } from './services/login.js';
 import { register } from './services/register.js';
-import { loginDelayMs, recordLoginFail, recordLoginOk, sweep } from './throttle.js';
+import {
+  loginDelayMs,
+  loginIpBlocked,
+  recordIpLoginFail,
+  recordLoginFail,
+  recordLoginOk,
+  sweep,
+  useThrottleStore,
+} from './throttle.js';
+import { createThrottleStore } from '../adapters/pg/throttle-store.js';
 import * as security from './services/security.js';
 import { authenticate } from './middleware/auth.js';
 import { createUserRepository } from '../adapters/pg/user-repository.js';
@@ -25,13 +34,17 @@ import {
   logAuthEvent,
   logRequest,
   readJsonBody,
-  tokensMatch,
   type RequestContext,
 } from './edge-filter.js';
+import { auditableName } from './audit-name.js';
+import { createGatewayAuthorizer } from './gateway-clients.js';
+import { assertAuthSecrets } from './auth/secrets.js';
+import { applyServerLimits, loginInputInBounds, sleepWithinBudget } from './limits.js';
 import { logEvent } from './log.js';
 import { GATEWAY_PORT, GATEWAY_HOST } from './config.js';
 import { VERSION } from '../version.js';
 import { getOrCreateGatewayToken } from '../lib/auth/gateway-token.js';
+import { assertEchoSafe } from '../adapters/sms/whatsapp.js';
 
 /** Retenção da auditoria de IP de login (ADR 0011 §F / LGPD). */
 const LOGIN_IP_RETENTION_DAYS = 90;
@@ -157,17 +170,34 @@ async function handleLogin(
     sendJson(res, 400, { error: 'name e password são obrigatórios' });
     return;
   }
+  if (!loginInputInBounds(body.name, body.password)) {
+    sendJson(res, 400, { error: 'name ou password acima do tamanho permitido' });
+    return;
+  }
 
   // M-3: atraso escalonado por `name` — brute-force online fica inviável sem
   // trancar a conta de ninguém. Some no primeiro login certo.
-  const delay = loginDelayMs(body.name);
-  if (delay > 0) await sleep(delay);
+  const ip = clientIp(req);
+  const ipGate = ip ? await loginIpBlocked(ip) : { ok: true, retryAfterMs: 0 };
+  if (!ipGate.ok) {
+    res.setHeader('Retry-After', Math.ceil(ipGate.retryAfterMs / 1000));
+    sendJson(res, 429, { error: 'muitas falhas de login deste IP — aguarde e tente de novo' });
+    return;
+  }
+
+  const delay = await loginDelayMs(body.name);
+  if (delay > 0 && !(await sleepWithinBudget(delay, sleep))) {
+    res.setHeader('Retry-After', Math.ceil(delay / 1000));
+    sendJson(res, 429, { error: 'muitas tentativas — aguarde e tente de novo' });
+    return;
+  }
 
   const out = await login(body.name, body.password);
   if (!out.ok) {
     if (out.reason === 'bad_credentials') {
-      recordLoginFail(body.name);
-      auditAuth(req, ctx, 'password_fail', { name: body.name });
+      await recordLoginFail(body.name);
+      if (ip) await recordIpLoginFail(ip);
+      auditAuth(req, ctx, 'password_fail', { name: await auditableName(body.name) });
       sendJson(res, 401, { error: 'usuário ou senha inválidos' });
     } else {
       auditAuth(req, ctx, 'password_ok', { name: body.name, reason: 'sms_error' });
@@ -175,7 +205,7 @@ async function handleLogin(
     }
     return;
   }
-  recordLoginOk(body.name); // senha certa (com ou sem 2FA pendente)
+  await recordLoginOk(body.name); // senha certa (com ou sem 2FA pendente)
   if (out.step === 'done') {
     auditAuth(req, ctx, 'password_ok', { name: body.name, userId: out.session.userId });
     void recordLoginIp(req, out.session.userId);
@@ -371,7 +401,11 @@ async function main(): Promise<void> {
     process.env.NIO_DATABASE_URL = process.env.NIO_GATEWAY_DATABASE_URL.trim();
   }
 
-  const gatewayToken = await getOrCreateGatewayToken();
+  useThrottleStore(createThrottleStore()); // N-5: contadores no Postgres (multi-réplica)
+  assertAuthSecrets(); // N-7: JWT_SECRET legado e OTP_HMAC_SECRET validados no boot
+  assertEchoSafe(); // N-3: echo sem opt-in devolveria o OTP na resposta
+
+  const authorizer = createGatewayAuthorizer(await getOrCreateGatewayToken());
 
   const server = createServer((req, res) => {
     const ctx = buildContext(req);
@@ -382,16 +416,18 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (TOKEN_REQUIRED(ctx.path) && !tokensMatch(extractGatewayToken(req), gatewayToken)) {
-      logRequest(ctx, { rejected: 'token_invalido' }, 'warn');
-      sendJson(res, 403, { error: 'token do gateway ausente ou inválido' });
-      return;
-    }
-
-    logRequest(ctx);
-
     void (async () => {
       try {
+        if (TOKEN_REQUIRED(ctx.path)) {
+          const principal = await authorizer.authorize(extractGatewayToken(req));
+          if (!principal) {
+            logRequest(ctx, { rejected: 'token_invalido' }, 'warn');
+            return sendJson(res, 403, { error: 'token do gateway ausente ou inválido' });
+          }
+          ctx.client = principal.clientName;
+        }
+        logRequest(ctx);
+
         if (ctx.method === 'POST' && ctx.path === '/register')
           return await handleRegister(req, res, ctx);
         if (ctx.method === 'POST' && ctx.path === '/login') return await handleLogin(req, res, ctx);
@@ -421,9 +457,11 @@ async function main(): Promise<void> {
     })();
   });
 
+  applyServerLimits(server);
+
   // GC das janelas de rate limiting em memória (M-3/M-4) — `unref` pra não
   // segurar o processo.
-  setInterval(() => sweep(), 5 * 60_000).unref();
+  setInterval(() => void sweep(), 5 * 60_000).unref();
 
   // Retenção das trilhas de auditoria (LGPD) — no boot e 1×/dia.
   //   login_ip_events → 90 d (ADR 0011 §F)   ·   auth_events → 180 d (ADR 0012)

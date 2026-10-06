@@ -75,10 +75,9 @@ describe('extractGatewayToken', () => {
 });
 
 describe('clientIp (ADR 0011 §F)', () => {
-  const orig = process.env.NIO_TRUST_PROXY;
+  const saved = { ...process.env };
   afterEach(() => {
-    if (orig === undefined) delete process.env.NIO_TRUST_PROXY;
-    else process.env.NIO_TRUST_PROXY = orig;
+    process.env = { ...saved };
   });
   const withSocket = (
     o: Partial<FilterableRequest> & { socket?: { remoteAddress?: string } } = {},
@@ -96,13 +95,31 @@ describe('clientIp (ADR 0011 §F)', () => {
     expect(clientIp(r)).toBe('10.0.0.5');
   });
 
-  test('com NIO_TRUST_PROXY=1: pega o 1º IP do X-Forwarded-For', () => {
+  test('com NIO_TRUST_PROXY=1: pega o IP que o proxy anexou (último), não o do cliente (N-4)', () => {
     process.env.NIO_TRUST_PROXY = '1';
     const r = withSocket({
-      headers: { 'x-forwarded-for': '203.0.113.7, 10.0.0.1' },
+      headers: { 'x-forwarded-for': '6.6.6.6, 203.0.113.7' }, // 6.6.6.6 = forjado pelo cliente
       socket: { remoteAddress: '10.0.0.1' },
     });
     expect(clientIp(r)).toBe('203.0.113.7');
+  });
+
+  test('NIO_TRUSTED_PROXIES=2: pega o penúltimo da cadeia', () => {
+    process.env.NIO_TRUSTED_PROXIES = '2';
+    const r = withSocket({
+      headers: { 'x-forwarded-for': '6.6.6.6, 203.0.113.7, 10.0.0.2' },
+      socket: { remoteAddress: '10.0.0.1' },
+    });
+    expect(clientIp(r)).toBe('203.0.113.7');
+  });
+
+  test('cadeia menor que os proxies confiáveis → o header não passou por eles: usa o socket', () => {
+    process.env.NIO_TRUSTED_PROXIES = '2';
+    const r = withSocket({
+      headers: { 'x-forwarded-for': '6.6.6.6' },
+      socket: { remoteAddress: '10.0.0.1' },
+    });
+    expect(clientIp(r)).toBe('10.0.0.1');
   });
 
   test('com NIO_TRUST_PROXY mas sem XFF: cai no socket', () => {

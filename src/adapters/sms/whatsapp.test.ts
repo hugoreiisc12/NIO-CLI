@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import {
   buildPayload,
+  assertEchoSafe,
   createWhatsAppSender,
+  devCodeField,
+  echoAllowed,
   formatWhatsAppNumber,
   smsMode,
   smsProviderHost,
@@ -127,5 +130,41 @@ describe('createWhatsAppSender', () => {
     }).sendOtp('+55', '123456');
     expect(r.status).toBe('failed');
     expect(r.error).toContain('ECONNREFUSED');
+  });
+});
+
+describe('modo echo é fail-closed (N-3)', () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+  const loopback = () => {
+    process.env.WHATSAPP_ENDPOINT_URL = 'http://127.0.0.1:4545/send';
+    process.env.WHATSAPP_TOKEN = 'dummy';
+  };
+
+  test('echoAllowed exige NIO_ALLOW_ECHO=1 e nunca vale em production', () => {
+    expect(echoAllowed({})).toBe(false);
+    expect(echoAllowed({ NIO_ALLOW_ECHO: '1' })).toBe(true);
+    expect(echoAllowed({ NIO_ALLOW_ECHO: 'true' })).toBe(false);
+    expect(echoAllowed({ NIO_ALLOW_ECHO: '1', NODE_ENV: 'production' })).toBe(false);
+  });
+
+  test('devCodeField só devolve o código em echo autorizado', () => {
+    process.env.NIO_ALLOW_ECHO = '1';
+    expect(devCodeField('echo', '123456')).toEqual({ devCode: '123456' });
+    expect(devCodeField('provider', '123456')).toEqual({});
+    delete process.env.NIO_ALLOW_ECHO;
+    expect(devCodeField('echo', '123456')).toEqual({});
+  });
+
+  test('assertEchoSafe: loopback sem opt-in → lança; com opt-in ou provedor real → ok', () => {
+    loopback();
+    expect(() => assertEchoSafe()).toThrow(/NIO_ALLOW_ECHO/);
+    process.env.NIO_ALLOW_ECHO = '1';
+    expect(() => assertEchoSafe()).not.toThrow();
+    process.env.NIO_ALLOW_ECHO = '0';
+    process.env.WHATSAPP_ENDPOINT_URL = 'https://graph.facebook.com/v25.0/x/messages';
+    expect(() => assertEchoSafe()).not.toThrow();
   });
 });

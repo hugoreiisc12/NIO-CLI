@@ -70,21 +70,24 @@ export function createLoginChallengeRepository(): LoginChallengeRepository {
       return row ? mapLoginChallengeRow(row) : null;
     },
 
-    async incrementAttempts(id) {
-      if (!isChallengeId(id)) return 0;
+    async claimAttempt(id, max) {
+      if (!isChallengeId(id)) return null;
       const res = await query<{ attempts: number }>(
-        'UPDATE login_challenges SET attempts = attempts + 1 WHERE id = $1 RETURNING attempts',
-        [id],
+        `UPDATE login_challenges SET attempts = attempts + 1
+         WHERE id = $1 AND consumed_at IS NULL AND expires_at > NOW() AND attempts < $2
+         RETURNING attempts`,
+        [id, max],
       );
-      return Number(res.rows[0]?.attempts ?? 0);
+      return res.rows[0] ? Number(res.rows[0].attempts) : null;
     },
 
     async consume(id) {
-      if (!isChallengeId(id)) return;
-      await query(
+      if (!isChallengeId(id)) return false;
+      const res = await query(
         'UPDATE login_challenges SET consumed_at = NOW() WHERE id = $1 AND consumed_at IS NULL',
         [id],
       );
+      return (res.rowCount ?? 0) > 0;
     },
 
     async deleteExpired() {

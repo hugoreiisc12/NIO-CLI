@@ -1,5 +1,6 @@
 import { test, expect } from 'bun:test';
-import { normalizeQuestion, questionHash, summarizeOutput, isCacheHit } from './rag-templates.js';
+import { questionHash } from '../core/rag.js';
+import { normalizeQuestion, summarizeOutput, isCacheHit } from './rag-templates.js';
 
 test('normalizeQuestion: caixa, acento, espaços e pontuação final convergem', () => {
   const a = normalizeQuestion('Qual o Total de Vendas?');

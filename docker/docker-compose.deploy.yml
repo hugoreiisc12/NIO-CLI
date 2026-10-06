@@ -67,7 +67,7 @@ configs:
 
 services:
   nio-gateway:
-    image: ghcr.io/hugoreiis12-png/nio-gateway:v0.18.3  # bumped by .github/workflows/image.yml
+    image: ghcr.io/hugoreiisc12/nio-gateway:v0.18.3  # bumped by .github/workflows/image.yml
     container_name: nio-gateway
     restart: unless-stopped
     environment:
@@ -76,11 +76,22 @@ services:
       NIO_DATABASE_URL: "${NIO_DATABASE_URL}"   # env var do stack no Portainer
       # Decisão aceita (não pendência): .142 usa cert self-signed → sem TLS na LAN
       # (evita DEPTH_ZERO_SELF_SIGNED_CERT). Tooling pra ligar TLS de verdade já
-      # existe (`scripts/db-tls-setup.sh`, CA interna) — falta só executar em
+      # existe (`scripts/db/db-tls-setup.sh`, CA interna) — falta só executar em
       # produção, não falta código. Ver docs/BACKLOG-TECNICO.md §4.2.
       NIO_DATABASE_SSL: "${NIO_DATABASE_SSL:-false}"
       JWT_SECRET: "${JWT_SECRET}"               # env var do stack no Portainer
-      NIO_GATEWAY_TOKEN: "${NIO_GATEWAY_TOKEN}" # token compartilhado (app externa)
+      OTP_HMAC_SECRET: "${OTP_HMAC_SECRET:-}"   # QP-5: vazio = fallback no JWT_SECRET (avisa no boot)
+      NIO_JWT_LEGACY: "${NIO_JWT_LEGACY:-1}"    # QP-4: 0 = recusa JWT sem kid (após a rotação)
+      NIO_TRUSTED_PROXIES: "${NIO_TRUSTED_PROXIES:-1}"  # N-4: o Kong é o único salto na frente
+      NIO_GATEWAY_TOKEN: "${NIO_GATEWAY_TOKEN}" # token compartilhado (legado — ver N-8)
+      NIO_GATEWAY_LEGACY_TOKEN: "${NIO_GATEWAY_LEGACY_TOKEN:-1}"  # 0 = só tokens por cliente
+    # N-6: hardening do container. Token e segredos vêm por env, então o gateway não
+    # escreve em disco — rootfs somente-leitura (+ /tmp efêmero), sem capabilities e
+    # sem escalar privilégio.
+    read_only: true
+    tmpfs: [ /tmp ]
+    cap_drop: [ ALL ]
+    security_opt: [ "no-new-privileges:true" ]
     # SEM publish de porta no host: o gateway é alcançado só pela `nio-net` (Kong o
     # acha por nome). Isso evita conflito de :3000 e força o tráfego pelo Kong (:8000),
     # onde vale o rate-limiting. Debug local: `curl http://127.0.0.1:8000/health`.

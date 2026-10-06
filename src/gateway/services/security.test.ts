@@ -34,16 +34,27 @@ test('isE164', () => {
 function challengeDeps() {
   const challenges = {
     create: async () => ({ id: 'ch-1' }),
-    consume: async () => {},
+    consume: async () => true,
   } as unknown as LoginChallengeRepository;
   const sms = { sendOtp: async () => ({ status: 'sent' as const }) } as unknown as OtpSender;
   return { challenges, sms };
 }
 
-test('startSecurityChallenge: endpoint loopback → smsMode=echo + devCode', async () => {
+test('startSecurityChallenge: echo SEM opt-in → sem devCode (N-3)', async () => {
   process.env.WHATSAPP_ENDPOINT_URL = 'http://127.0.0.1:4545/send';
   process.env.WHATSAPP_TOKEN = 'dummy';
+  delete process.env.NIO_ALLOW_ECHO;
   const r = await startSecurityChallenge(1, '+5511999998888', challengeDeps());
+  if (!r.ok) throw new Error();
+  expect(r.devCode).toBeUndefined();
+});
+
+test('startSecurityChallenge: endpoint loopback + NIO_ALLOW_ECHO=1 → smsMode=echo + devCode', async () => {
+  process.env.WHATSAPP_ENDPOINT_URL = 'http://127.0.0.1:4545/send';
+  process.env.WHATSAPP_TOKEN = 'dummy';
+  process.env.NIO_ALLOW_ECHO = '1';
+  const r = await startSecurityChallenge(1, '+5511999998888', challengeDeps());
+  delete process.env.NIO_ALLOW_ECHO;
   expect(r.ok).toBe(true);
   if (!r.ok) throw new Error();
   expect(r.smsMode).toBe('echo');
@@ -216,9 +227,11 @@ function exhaustedChallengeDeps() {
   };
   const challenges = {
     findById: async () => challenge,
-    incrementAttempts: async () => challenge.attempts,
+    claimAttempt: async (_id: string, max: number) =>
+      challenge.attempts < max ? ++challenge.attempts : null,
     consume: async () => {
       calls.consume++;
+      return true;
     },
   } as unknown as LoginChallengeRepository;
   const users = {

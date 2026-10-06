@@ -15,10 +15,9 @@ import type {
   RagResult,
   ScoredTemplate,
 } from '../../core/rag.js';
-import { EMBEDDING_DIMS } from '../../core/rag.js';
+import { EMBEDDING_DIMS, questionHash } from '../../core/rag.js';
 // Função pura (sem IO): a regra de hash é a mesma do orquestrador — reusar evita
 // duas definições divergentes da chave de cache.
-import { questionHash } from '../../app/rag-templates.js';
 import { query } from './client.js';
 
 /** Linha crua de `dax_query_template` (snake_case). `id` vem como string (BIGSERIAL). */

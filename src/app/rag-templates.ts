@@ -3,7 +3,6 @@
  * exato e resumo barato da saída. Sem IO — o orquestrador (`dax-rag.ts`) e o
  * repository (`adapters/pg`) consomem daqui. Testável sem banco nem modelo.
  */
-import { createHash } from 'node:crypto';
 import type { FabricRow } from '../core/fabric.js';
 import type { DaxOutputSummary } from '../core/rag.js';
 
@@ -26,16 +25,6 @@ export function normalizeQuestion(question: string): string {
     .trim() // antes de cortar a pontuação: senão "vendas!!  " não casa o fim de string
     .replace(/[?!.,;:]+$/, '')
     .trim();
-}
-
-/**
- * Chave do hit exato. Inclui o escopo porque **o mesmo texto em outro modelo
- * semântico é outra pergunta** — um DAX válido num dataset é inválido noutro.
- */
-export function questionHash(questionNorm: string, workspaceId: string, datasetId: string): string {
-  return createHash('sha256')
-    .update(`${workspaceId}\u0000${datasetId}\u0000${questionNorm}`)
-    .digest('hex');
 }
 
 /** Corta valores longos da amostra; preserva o tipo quando não é string. */

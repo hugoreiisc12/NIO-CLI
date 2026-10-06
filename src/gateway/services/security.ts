@@ -18,6 +18,7 @@ import { createAuthEventRepository } from '../../adapters/pg/auth-event-reposito
 import { createAuthSessionRepository } from '../../adapters/pg/auth-session-repository.js';
 import {
   createWhatsAppSender,
+  devCodeField,
   smsMode,
   smsProviderHost,
   type SmsMode,
@@ -114,7 +115,7 @@ export async function startSecurityChallenge(
     return { ok: false, error: 'número inválido (use E.164, ex.: +5511999998888)' };
   // M-4: `enable-2fa` aceita telefone arbitrário — sem cap, um Bearer válido
   // torrava mensagens pra qualquer número (toll fraud).
-  if (!smsAllowed(userId, toPhone)) {
+  if (!(await smsAllowed(userId, toPhone))) {
     return { ok: false, error: 'muitos códigos solicitados — aguarde alguns minutos.' };
   }
   const challenges = deps.challenges ?? createLoginChallengeRepository();
@@ -141,7 +142,7 @@ export async function startSecurityChallenge(
     ok: true,
     challengeId: challenge.id,
     smsMode: mode,
-    ...(mode === 'echo' ? { devCode: code } : {}),
+    ...devCodeField(mode, code),
   };
 }
 
@@ -162,33 +163,26 @@ async function consumeSecurityCode(
     return { ok: false, error: 'desafio não corresponde' };
   }
 
-  // Teto absoluto: uma vez esgotado, nenhum código é mais conferido — sem isto o
-  // caminho backup nem incrementava o contador, ficando brute-forçável no TTL.
-  if (ch.attempts >= CHALLENGE_MAX_ATTEMPTS) return { ok: false, error: 'tentativas esgotadas' };
+  // Tentativa reservada ANTES de conferir, de forma atômica (ver `verifyLogin`):
+  // sem isso, requisições paralelas passavam todas pelo teto de tentativas.
+  const max = type === 'backup' ? CHALLENGE_MAX_ATTEMPTS : OTP_MAX_ATTEMPTS;
+  const n = await challenges.claimAttempt(ch.id, max);
+  if (n === null) return { ok: false, error: 'tentativas esgotadas' };
 
   if (type === 'backup') {
     const stored = await users.getBackupCodes(userId);
     const idx = await verifyBackupCode(code, stored.codes, stored.pepperId);
-    if (idx < 0) {
-      const n = await challenges.incrementAttempts(ch.id);
-      return {
-        ok: false,
-        error: n >= CHALLENGE_MAX_ATTEMPTS ? 'tentativas esgotadas' : 'código de backup inválido',
-      };
-    }
+    if (idx < 0) return rejectedCode(n, max, 'código de backup inválido');
     await users.updateBackupCodes(userId, markUsed(stored.codes!, idx), stored.pepperId);
-  } else {
-    if (ch.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, error: 'tentativas esgotadas' };
-    if (!verifyOtp(code, ch.codeHash)) {
-      const n = await challenges.incrementAttempts(ch.id);
-      return {
-        ok: false,
-        error: n >= OTP_MAX_ATTEMPTS ? 'tentativas esgotadas' : 'código inválido',
-      };
-    }
+  } else if (!verifyOtp(code, ch.codeHash)) {
+    return rejectedCode(n, max, 'código inválido');
   }
-  await challenges.consume(ch.id);
+  if (!(await challenges.consume(ch.id))) return { ok: false, error: 'desafio consumed' };
   return { ok: true };
+}
+
+function rejectedCode(attempt: number, max: number, msg: string): { ok: false; error: string } {
+  return { ok: false, error: attempt >= max ? 'tentativas esgotadas' : msg };
 }
 
 export async function confirmEnable2fa(

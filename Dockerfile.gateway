@@ -16,5 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY dist ./dist
+# N-6: sem root — a imagem `node` já traz o usuário `node` (uid 1000); :3000 não é privilegiada.
+USER node
 EXPOSE 3000
 CMD ["node", "dist/gateway/index.js"]

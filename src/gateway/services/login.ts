@@ -14,7 +14,12 @@ import type { OtpSender } from '../../core/messaging.js';
 import { createUserRepository } from '../../adapters/pg/user-repository.js';
 import { createAuthSessionRepository } from '../../adapters/pg/auth-session-repository.js';
 import { createLoginChallengeRepository } from '../../adapters/pg/login-challenge-repository.js';
-import { createWhatsAppSender, smsMode, type SmsMode } from '../../adapters/sms/whatsapp.js';
+import {
+  createWhatsAppSender,
+  devCodeField,
+  smsMode,
+  type SmsMode,
+} from '../../adapters/sms/whatsapp.js';
 import { generateOtp, hashOtp, verifyOtp } from '../auth/otp.js';
 import { verifyBackupCode, markUsed, countRemaining } from '../auth/backup-codes.js';
 import { JWT_EXPIRES_IN, JWT_ISSUER, JWT_AUDIENCE } from '../config.js';
@@ -171,7 +176,7 @@ export async function login(
 
   // M-4: cap de OTP por usuário/número — mesmo com a senha certa, não dá pra
   // torrar mensagens repetindo o login.
-  if (!smsAllowed(user.id, user.phone)) {
+  if (!(await smsAllowed(user.id, user.phone))) {
     return {
       ok: false,
       reason: 'server_error',
@@ -215,7 +220,7 @@ export async function login(
     challengeId: challenge.id,
     phoneHint: maskPhone(user.phone),
     smsMode: mode,
-    ...(mode === 'echo' ? { devCode: code } : {}),
+    ...devCodeField(mode, code),
   };
 }
 
@@ -233,63 +238,73 @@ export async function verifyLogin(
   if (!usable.ok) return { ok: false, reason: usable.reason };
   const ch = usable.ch;
 
-  // Teto absoluto do desafio: uma vez esgotado, NENHUM código é mais conferido —
-  // sem isto, o `attempts` só trocava a mensagem e o OTP (6 dígitos) ficava
-  // brute-forçável dentro do TTL, já que `verifyOtp` rodava em toda chamada.
-  if (ch.attempts >= CHALLENGE_MAX_ATTEMPTS) {
-    return { ok: false, reason: 'attempts_exhausted', userId: ch.userId };
-  }
-
   const user = await users.findById(ch.userId);
   if (!user) return { ok: false, reason: 'not_found', userId: ch.userId };
 
-  if (type === 'backup') {
-    const stored = await users.getBackupCodes(ch.userId);
-    const idx = await verifyBackupCode(code, stored.codes, stored.pepperId);
-    if (idx < 0) {
-      // O contador `attempts` é compartilhado com a fase OTP (que já pode ter
-      // gastado 3), então o teto aqui é o absoluto do desafio, não o do OTP.
-      const attempts = await challenges.incrementAttempts(ch.id);
-      if (attempts >= CHALLENGE_MAX_ATTEMPTS)
-        return { ok: false, reason: 'attempts_exhausted', userId: ch.userId };
-      return {
-        ok: false,
-        reason: 'invalid',
-        remaining: CHALLENGE_MAX_ATTEMPTS - attempts,
-        userId: ch.userId,
-      };
+  // A tentativa é reservada ANTES de conferir o código, de forma atômica: ler
+  // `attempts`, conferir e só depois incrementar deixava requisições paralelas
+  // passarem todas pelo teto (brute-force do OTP de 6 dígitos dentro do TTL).
+  const step =
+    type === 'backup'
+      ? await checkBackupCode(challenges, users, ch, code)
+      : await checkOtp(challenges, ch, code);
+  if (!step.ok) return step;
+
+  // Uso único de verdade: só quem de fato consumiu o desafio ganha a sessão.
+  if (!(await challenges.consume(ch.id))) {
+    return { ok: false, reason: 'consumed', userId: ch.userId };
+  }
+  const session = await issueSession(user);
+  return { ok: true, session, backupCodesRemaining: step.backupCodesRemaining };
+}
+
+type StepResult =
+  | { ok: true; backupCodesRemaining?: number }
+  | Extract<VerifyOutcome, { ok: false }>;
+
+async function checkOtp(
+  challenges: LoginChallengeRepository,
+  ch: LoginChallenge,
+  code: string,
+): Promise<StepResult> {
+  const exhausted = {
+    ok: false,
+    reason: 'attempts_exhausted',
+    requiresBackupCode: true,
+    userId: ch.userId,
+  } as const;
+  const n = await challenges.claimAttempt(ch.id, OTP_MAX_ATTEMPTS);
+  if (n === null) return exhausted; // esgotadas as 3, cai pro código de backup
+  if (verifyOtp(code, ch.codeHash)) return { ok: true };
+  if (n >= OTP_MAX_ATTEMPTS) return exhausted;
+  return { ok: false, reason: 'invalid', remaining: OTP_MAX_ATTEMPTS - n, userId: ch.userId };
+}
+
+async function checkBackupCode(
+  challenges: LoginChallengeRepository,
+  users: UserRepository,
+  ch: LoginChallenge,
+  code: string,
+): Promise<StepResult> {
+  // O contador é compartilhado com a fase OTP: o teto aqui é o absoluto do desafio.
+  const n = await challenges.claimAttempt(ch.id, CHALLENGE_MAX_ATTEMPTS);
+  if (n === null) return { ok: false, reason: 'attempts_exhausted', userId: ch.userId };
+  const stored = await users.getBackupCodes(ch.userId);
+  const idx = await verifyBackupCode(code, stored.codes, stored.pepperId);
+  if (idx < 0) {
+    if (n >= CHALLENGE_MAX_ATTEMPTS) {
+      return { ok: false, reason: 'attempts_exhausted', userId: ch.userId };
     }
-    const used = markUsed(stored.codes!, idx);
-    await users.updateBackupCodes(ch.userId, used, stored.pepperId);
-    await challenges.consume(ch.id);
     return {
-      ok: true,
-      session: await issueSession(user),
-      backupCodesRemaining: countRemaining(used),
+      ok: false,
+      reason: 'invalid',
+      remaining: CHALLENGE_MAX_ATTEMPTS - n,
+      userId: ch.userId,
     };
   }
-
-  // Soft-cap do OTP: esgotadas as 3 tentativas, o OTP não é mais conferido — o
-  // usuário cai pro código de backup (até o teto absoluto acima).
-  if (ch.attempts >= OTP_MAX_ATTEMPTS) {
-    return { ok: false, reason: 'attempts_exhausted', requiresBackupCode: true, userId: ch.userId };
-  }
-
-  if (verifyOtp(code, ch.codeHash)) {
-    await challenges.consume(ch.id);
-    return { ok: true, session: await issueSession(user) };
-  }
-
-  const attempts = await challenges.incrementAttempts(ch.id);
-  if (attempts >= OTP_MAX_ATTEMPTS) {
-    return { ok: false, reason: 'attempts_exhausted', requiresBackupCode: true, userId: ch.userId };
-  }
-  return {
-    ok: false,
-    reason: 'invalid',
-    remaining: OTP_MAX_ATTEMPTS - attempts,
-    userId: ch.userId,
-  };
+  const used = markUsed(stored.codes!, idx);
+  await users.updateBackupCodes(ch.userId, used, stored.pepperId);
+  return { ok: true, backupCodesRemaining: countRemaining(used) };
 }
 
 /** Revoga a auth_session (logout). Idempotente. */

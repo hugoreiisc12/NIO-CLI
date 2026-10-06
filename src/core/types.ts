@@ -7,6 +7,15 @@
  * colunas `snake_case` do banco viram `camelCase` mapeadas no adapter.
  */
 
+/** `gateway_clients` — cliente autorizado do gateway (N-8). O token em si nunca é guardado. */
+export interface GatewayClient {
+  id: string;
+  name: string;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+  revokedAt: Date | null;
+}
+
 // ─── Enums do schema (CHECK constraints) ───────────────────────────────
 
 /** `sessions.profile` — perfil de ambiente escolhido no wizard. */

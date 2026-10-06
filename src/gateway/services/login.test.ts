@@ -114,9 +114,11 @@ function deps(
       return stored;
     },
     findById: async () => stored,
-    incrementAttempts: async () => (stored ? ++stored.attempts : 0),
+    claimAttempt: async (_id, max) => (stored && stored.attempts < max ? ++stored.attempts : null),
     consume: async () => {
-      if (stored) stored.consumedAt = new Date();
+      if (!stored || stored.consumedAt) return false;
+      stored.consumedAt = new Date();
+      return true;
     },
   };
   const sms: OtpSender = { sendOtp: over.sms ?? (async () => ({ status: 'sent' })) };
@@ -163,9 +165,28 @@ describe('login', () => {
     }
   });
 
-  test('endpoint de WhatsApp em loopback → 2fa_required com smsMode=echo + devCode', async () => {
+  test('echo SEM opt-in → smsMode=echo mas o devCode NUNCA sai (N-3)', async () => {
     process.env.WHATSAPP_ENDPOINT_URL = 'http://127.0.0.1:4545/send';
     process.env.WHATSAPP_TOKEN = 'dummy';
+    delete process.env.NIO_ALLOW_ECHO;
+    try {
+      const out = await login(
+        'hugo',
+        'pw',
+        deps({ u: user({ auth2: true, phone: '+5511988887777' }) }),
+      );
+      if (!out.ok || out.step !== '2fa_required') throw new Error('esperava 2fa_required');
+      expect(out.devCode).toBeUndefined();
+    } finally {
+      delete process.env.WHATSAPP_ENDPOINT_URL;
+      delete process.env.WHATSAPP_TOKEN;
+    }
+  });
+
+  test('endpoint de WhatsApp em loopback + NIO_ALLOW_ECHO=1 → smsMode=echo + devCode', async () => {
+    process.env.WHATSAPP_ENDPOINT_URL = 'http://127.0.0.1:4545/send';
+    process.env.WHATSAPP_TOKEN = 'dummy';
+    process.env.NIO_ALLOW_ECHO = '1';
     try {
       const out = await login(
         'hugo',
@@ -178,6 +199,7 @@ describe('login', () => {
     } finally {
       delete process.env.WHATSAPP_ENDPOINT_URL;
       delete process.env.WHATSAPP_TOKEN;
+      delete process.env.NIO_ALLOW_ECHO;
     }
   });
 

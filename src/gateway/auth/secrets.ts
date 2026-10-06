@@ -14,7 +14,8 @@
  * PERDER o `NIO_PEPPERS` depois de usar = reset de senha forçado dos usuários
  * peppered. Trate como segredo crítico, com backup.
  */
-import { getJwtSecret, MIN_JWT_SECRET_LENGTH } from '../config.js';
+import { getJwtSecret, jwtSecretWeakness, MIN_JWT_SECRET_LENGTH } from '../config.js';
+import { logEvent } from '../log.js';
 
 /** id 0 = sem pepper (usuário legado, ou nenhum pepper configurado). */
 export const NO_PEPPER = 0;
@@ -75,9 +76,55 @@ export function currentPepperId(): number {
   return max;
 }
 
-/** Chave do HMAC do OTP — própria (`OTP_HMAC_SECRET`) ou o `JWT_SECRET` (default). */
+let otpFallbackWarned = false;
+
+/**
+ * Chave do HMAC do OTP — própria (`OTP_HMAC_SECRET`) ou, por compatibilidade, o
+ * `JWT_SECRET`. QP-5: reusar o JWT_SECRET mistura dois domínios criptográficos, então o
+ * fallback avisa (1× por processo) e some na v1.0.
+ */
 export function otpHmacSecret(): string {
-  return process.env.OTP_HMAC_SECRET?.trim() || getJwtSecret();
+  const own = process.env.OTP_HMAC_SECRET?.trim();
+  if (own) return own;
+  if (!otpFallbackWarned) {
+    otpFallbackWarned = true;
+    logEvent(
+      'otp_secret_fallback',
+      {
+        hint: 'OTP_HMAC_SECRET ausente — usando JWT_SECRET. Gere um com `openssl rand -base64 32`.',
+      },
+      'warn',
+    );
+  }
+  return getJwtSecret();
+}
+
+/**
+ * Valida os segredos de auth no boot do gateway (N-7). Com `JWT_SECRETS` ativo, o
+ * `JWT_SECRET` legado nunca passava pela checagem de força, mas segue verificando
+ * token sem `kid` — um segredo fraco ali forja sessão. Falha rápida e acionável.
+ */
+export function assertAuthSecrets(): void {
+  const legacy = process.env.JWT_SECRET?.trim();
+  if (legacy) {
+    const weak = jwtSecretWeakness(legacy);
+    if (weak)
+      throw new Error(`JWT_SECRET fraco: ${weak}. Rotacione (runbook BACKLOG-TECNICO §6.6).`);
+  }
+  if (jwtSecrets().size === 0) getJwtSecret(); // sem `kid`: o JWT_SECRET é obrigatório
+  const otp = process.env.OTP_HMAC_SECRET?.trim();
+  if (otp && otp.length < MIN_JWT_SECRET_LENGTH) {
+    throw new Error(
+      `OTP_HMAC_SECRET curto (${otp.length} chars) — mínimo ${MIN_JWT_SECRET_LENGTH}.`,
+    );
+  }
+  if (otp && otp === legacy) {
+    logEvent(
+      'otp_secret_reused',
+      { hint: 'OTP_HMAC_SECRET igual ao JWT_SECRET — use valores distintos.' },
+      'warn',
+    );
+  }
 }
 
 // ─── JWT: rotação por `kid` (ADR 0011 §E) ───────────────────────────
@@ -140,5 +187,16 @@ export function jwtSigningKey(): { kid: string | undefined; secret: string } {
  */
 export function jwtVerifyKey(kid: string | undefined): string | null {
   if (kid) return jwtSecrets().get(kid) ?? null;
+  if (!legacyJwtAllowed()) return null;
   return process.env.JWT_SECRET?.trim() || null;
+}
+
+/**
+ * QP-4: `NIO_JWT_LEGACY=0` recusa token sem `kid`. Sem isso, um `JWT_SECRET`
+ * comprometido continua forjando token válido depois da rotação por `JWT_SECRETS` — a
+ * rotação (§E) nunca fecha. Default mantém a compatibilidade; desligue depois que as
+ * sessões antigas expirarem (ou após `logout-all`).
+ */
+function legacyJwtAllowed(): boolean {
+  return process.env.NIO_JWT_LEGACY?.trim() !== '0';
 }

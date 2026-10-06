@@ -318,6 +318,28 @@ COMMENT ON TABLE task_steps IS 'Trilha por step. (task_id, step_number, attempt)
 
 
 -- ───────────────────────────────────────────────
+-- Tabela: clientes autorizados do gateway (migration 0017 · N-8)
+-- ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS gateway_clients (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name         TEXT NOT NULL UNIQUE CHECK (char_length(name) BETWEEN 1 AND 64),
+    token_hash   TEXT NOT NULL UNIQUE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_used_at TIMESTAMPTZ,
+    revoked_at   TIMESTAMPTZ
+);
+
+-- ───────────────────────────────────────────────
+-- Tabela: estado de rate limiting do gateway (migration 0016 · N-5)
+-- ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS auth_throttle (
+    key      TEXT PRIMARY KEY,
+    count    INTEGER     NOT NULL,
+    reset_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_auth_throttle_reset_at ON auth_throttle(reset_at);
+
+-- ───────────────────────────────────────────────
 -- Least-privilege: roles nio_cli / nio_gateway (migration 0008 · TP-1)
 -- ───────────────────────────────────────────────
 -- Banco novo de schema.sql: cria os group roles e os grants. O setup dos LOGIN
@@ -331,7 +353,8 @@ GRANT USAGE ON SCHEMA public TO nio_cli, nio_gateway;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sessions, dependency_events TO nio_cli;
 GRANT SELECT (id, name, auth_2, phone, ips_using, timestamp_creation, timestamp_password_change, timestamp_last_session, password_pepper_id, backup_pepper_id) ON user_cli TO nio_cli;
 GRANT SELECT ON auth_sessions TO nio_cli;
-GRANT SELECT, INSERT, UPDATE, DELETE ON user_cli, auth_sessions, login_challenges, auth_events, login_ip_events TO nio_gateway;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_cli, auth_sessions, login_challenges, auth_events, login_ip_events, auth_throttle TO nio_gateway;
+GRANT SELECT, INSERT, UPDATE ON gateway_clients TO nio_gateway;
 GRANT USAGE, SELECT ON SEQUENCE user_cli_id_seq, auth_events_id_seq TO nio_gateway;
 GRANT SELECT, INSERT, UPDATE, DELETE ON dax_doc_chunk, dax_query_template TO nio_cli;
 GRANT USAGE, SELECT ON SEQUENCE dax_doc_chunk_id_seq, dax_query_template_id_seq TO nio_cli;
