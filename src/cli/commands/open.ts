@@ -4,7 +4,7 @@ import type { Command } from "commander";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
 import { SessionManager } from "../../app/session-manager.js";
 import { createIdeGateway } from "../../adapters/ide/ide-gateway.js";
-import { writeIdeAutostartTask } from "../../lib/ide-tasks.js";
+import { writeIdeAutostartTask } from "../support/ide-tasks.js";
 import { c, sym } from "../../lib/colors.js";
 import { brand } from "../../brand.js";
 

@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { brand } from "../../../brand.js";
 import { animateMatrixLogo } from "../../../matrix-logo.js";
-import { getProjectConfigPath, type ProjectConfig, type Ide } from "../../../config.js";
+import { getProjectConfigPath, type ProjectConfig, type Ide } from "../../../project-config.js";
 import type { Session, Ide as SessionIde, Profile } from "../../../core/types.js";
 import { SessionManager, type MaterializedSession } from "../../../app/session-manager.js";
 import type { McpSpec } from "../../../core/environment.js";
@@ -11,13 +11,13 @@ import { collectRuleSkills } from "../../../lib/skills/rules.js";
 import { offerDependencyInstall, offerRuleSkills } from "../../flows/dependencies.js";
 import { offerShellCompletion } from "../../flows/completion.js";
 import { ensureCoreClients } from "../../flows/clients.js";
-import { ensureConfig } from "../../../lib/auth/nio-config.js";
+import { ensureConfig } from "../../auth/nio-config.js";
 import { section, c, sym } from "../../../lib/colors.js";
-import { startSpinner } from "../../../lib/spinner.js";
+import { startSpinner } from "../../support/spinner.js";
 import { SyncReport, renderReport, browseReport, resolveReportMode } from "../../ui/report.js";
-import { flushTelemetry } from "../../../lib/telemetry.js";
-import { writeManagedDotfiles } from "../../../lib/dotfiles.js";
-import { confirm } from "../../../lib/prompts.js";
+import { flushTelemetry } from "../../support/telemetry.js";
+import { writeManagedDotfiles } from "../../support/dotfiles.js";
+import { confirm } from "../../support/prompts.js";
 import {
   LanguageConfigurator,
   type LanguageSelection,
@@ -44,7 +44,7 @@ import {
 } from "./provision-step.js";
 import { promptSelection } from "../../flows/sections.js";
 import { handoffToOperator } from "./handoff.js";
-import { writeIdeAutostartTask } from "../../../lib/ide-tasks.js";
+import { writeIdeAutostartTask } from "../../support/ide-tasks.js";
 import type { StoredSession } from "../../../lib/auth/cli-session-store.js";
 
 /**

@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { input, confirm } from "../../lib/prompts.js";
+import { input, confirm } from "../support/prompts.js";
 import { section, c, sym } from "../../lib/colors.js";
 
 /**

@@ -8,7 +8,7 @@ import { brand } from "../../brand.js";
 import { c, sym } from "../../lib/colors.js";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
 import { SessionManager } from "../../app/session-manager.js";
-import { headroomHealthy, HEADROOM_URL } from "../../lib/headroom.js";
+import { headroomHealthy, HEADROOM_URL } from "../support/headroom.js";
 import { HeadroomRequiredError } from "../../app/ai-client.js";
 import type { Session } from "../../core/types.js";
 

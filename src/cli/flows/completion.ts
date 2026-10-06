@@ -2,7 +2,7 @@ import { existsSync, readFileSync, appendFileSync, mkdirSync } from "node:fs";
 import { brand } from "../../brand.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { confirm } from "../../lib/prompts.js";
+import { confirm } from "../support/prompts.js";
 import { c, sym, cmd } from "../../lib/colors.js";
 
 /**

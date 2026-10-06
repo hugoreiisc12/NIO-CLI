@@ -11,7 +11,7 @@ import {
   GetPromptRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { VERSION } from './version.js';
-import { loadProjectConfig, type ProjectConfig } from './config.js';
+import { loadProjectConfig, type ProjectConfig } from './project-config.js';
 import { tools, toolDefinitions, type ToolContext } from './tools/index.js';
 import { errorResult } from './lib/tool-result.js';
 import { notifyMcpServerIfUpdate } from './lib/version-check.js';

@@ -1,12 +1,12 @@
 import type { Command } from "commander";
 import { section, c, sym } from "../../lib/colors.js";
-import { startSpinner } from "../../lib/spinner.js";
-import { readConfigFile, writeConfigFile } from "../../lib/auth/nio-config.js";
+import { startSpinner } from "../support/spinner.js";
+import { readConfigFile, writeConfigFile } from "../auth/nio-config.js";
 import {
   promptN8nNativeCredentials,
   verifyN8nNativeCredentials,
   n8nNativeStatus,
-} from "../../lib/auth/n8n-config.js";
+} from "../auth/n8n-config.js";
 import { readToolsCache } from "../../adapters/n8n/tools-cache.js";
 import { isN8nNativeReadTool } from "../../profiles/n8n-native-tools.js";
 

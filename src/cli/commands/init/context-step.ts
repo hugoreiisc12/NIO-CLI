@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { confirm } from "../../../lib/prompts.js";
+import { confirm } from "../../support/prompts.js";
 import { c } from "../../../lib/colors.js";
 import {
   writeProjectConfig,
@@ -7,7 +7,7 @@ import {
   fixGitignoreForSplit,
   USER_CONFIG_FILE,
   type ProjectConfig,
-} from "../../../config.js";
+} from "../../../project-config.js";
 import { brand } from "../../../brand.js";
 import { concatenateRules } from "../../../lib/skills/rules.js";
 import { writeRepoHarness } from "../../../lib/clients/harness.js";

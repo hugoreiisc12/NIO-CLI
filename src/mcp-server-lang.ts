@@ -16,9 +16,9 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { VERSION } from './version.js';
 import { createKnowledgeStore } from './adapters/lang/knowledge-store.js';
 import { createLanguageCatalog } from './adapters/lang/language-catalog.js';
-import * as langReference from './tools/lang-reference.js';
-import * as langRecipe from './tools/lang-recipe.js';
-import * as langN8n from './tools/lang-n8n.js';
+import * as langReference from './tools/lang/reference.js';
+import * as langRecipe from './tools/lang/recipe.js';
+import * as langN8n from './tools/lang/n8n.js';
 
 const BIN = 'nio-lang';
 

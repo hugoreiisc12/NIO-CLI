@@ -1,10 +1,10 @@
 import type { Command } from "commander";
 import { brand } from "../../brand.js";
 import { spawnSyncPortable } from "../../lib/proc.js";
-import { confirm } from "../../lib/prompts.js";
+import { confirm } from "../support/prompts.js";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
 import { SessionManager } from "../../app/session-manager.js";
-import { loadProjectConfig } from "../../config.js";
+import { loadProjectConfig } from "../../project-config.js";
 import { checkForUpdate } from "../../lib/version-check.js";
 import { uninstallProvision, provision } from "../../lib/provision/provision.js";
 import { readDependencies, skillIdMap } from "../../lib/skills/skills.js";
@@ -14,8 +14,8 @@ import { writeRepoHarness } from "../../lib/clients/harness.js";
 import { patternsExist, runPatternsAnalysis } from "../../lib/skills/patterns.js";
 import { offerShellCompletion } from "../flows/completion.js";
 import { ensureUserConfig } from "../flows/user-config.js";
-import { startSpinner } from "../../lib/spinner.js";
-import { track, provisionedItems, flushTelemetry } from "../../lib/telemetry.js";
+import { startSpinner } from "../support/spinner.js";
+import { track, provisionedItems, flushTelemetry } from "../support/telemetry.js";
 import { VERSION } from "../../version.js";
 import { opencodeTarget, detectConfiguredTargets } from "../../lib/clients/targets.js";
 import { coworkConfigured, installCoworkGlobal } from "../../lib/clients/client-configs.js";
@@ -219,7 +219,7 @@ export function registerSyncCommand(program: Command): void {
             });
           }
 
-          // Telemetria v1 removida — `track` é no-op v2 (lib/telemetry.ts).
+          // Telemetria v1 removida — `track` é no-op v2 (cli/support/telemetry.ts).
           const uidByName = skillIdMap();
 
           // ---- Fase informativa: coleta cada etapa como seção (não imprime na hora) ----

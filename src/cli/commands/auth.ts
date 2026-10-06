@@ -1,8 +1,8 @@
 import type { Command } from "commander";
-import { input, password } from "../../lib/prompts.js";
+import { input, password } from "../support/prompts.js";
 import { brand } from "../../brand.js";
 import { animateMatrixLogo } from "../../matrix-logo.js";
-import { startSpinner } from "../../lib/spinner.js";
+import { startSpinner } from "../support/spinner.js";
 import { c, sym } from "../../lib/colors.js";
 import { MIN_PASSWORD_LENGTH } from "../../gateway/auth/password-policy.js";
 import {
@@ -12,10 +12,10 @@ import {
   gatewayRegister,
   gatewayVerify2fa,
   type GatewaySession,
-} from "../../lib/auth/gateway-client.js";
+} from "../auth/gateway-client.js";
 import { loadSession, saveSession, clearSession } from "../../lib/auth/cli-session-store.js";
-import { ensureConfig } from "../../lib/auth/nio-config.js";
-import { checkGatewayVersion, ensureGatewayRunning } from "../../lib/auth/gateway-process.js";
+import { ensureConfig } from "../auth/nio-config.js";
+import { checkGatewayVersion, ensureGatewayRunning } from "../auth/gateway-process.js";
 import { shutdown } from "../../lib/shutdown.js";
 import { continueChain } from "../flows/onboarding.js";
 import { box, cmd } from "../../lib/colors.js";

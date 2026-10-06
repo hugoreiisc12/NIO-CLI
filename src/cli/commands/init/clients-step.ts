@@ -1,4 +1,4 @@
-import { checkbox } from "../../../lib/prompts.js";
+import { checkbox } from "../../support/prompts.js";
 import { section } from "../../../lib/colors.js";
 import { CLIENTS } from "../../../lib/clients/client-install.js";
 import { installOpencodeGlobal, type InstallResult } from "../../../lib/clients/client-configs.js";

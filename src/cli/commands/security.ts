@@ -6,9 +6,9 @@
 import type { Command } from "commander";
 import { brand } from "../../brand.js";
 import { c, sym, section, box } from "../../lib/colors.js";
-import { input, password, confirm } from "../../lib/prompts.js";
+import { input, password, confirm } from "../support/prompts.js";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
-import { gatewaySecurity } from "../../lib/auth/gateway-client.js";
+import { gatewaySecurity } from "../auth/gateway-client.js";
 
 /** Token da sessão local, ou encerra pedindo login. */
 async function requireToken(): Promise<string> {
@@ -89,7 +89,7 @@ async function runEnable(): Promise<void> {
 
 /**
  * Modo echo (dev): nenhuma mensagem real foi enviada — o código só existe no mock
- * (`scripts/whatsapp-echo.ts` / `~/.nio/whatsapp-echo-last.json`). Mostra ele direto pra
+ * (`scripts/dev/whatsapp-echo.ts` / `~/.nio/whatsapp-echo-last.json`). Mostra ele direto pra
  * não deixar o usuário esperando um WhatsApp que nunca chega.
  */
 function noteSmsMode(r: { smsMode?: string; devCode?: string }): void {

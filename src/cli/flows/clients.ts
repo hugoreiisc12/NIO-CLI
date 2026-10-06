@@ -1,5 +1,5 @@
 import { spawnSyncPortable } from "../../lib/proc.js";
-import { confirm } from "../../lib/prompts.js";
+import { confirm } from "../support/prompts.js";
 import { CLIENTS, isBinaryInstalled, type ClientInfo } from "../../lib/clients/client-install.js";
 import { c, sym, cmd, link, box } from "../../lib/colors.js";
 import { flowsCopy, fmt } from "../copy.js";

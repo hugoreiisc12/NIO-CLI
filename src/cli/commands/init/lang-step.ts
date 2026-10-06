@@ -1,7 +1,7 @@
 // Prompts do wizard de pré-configuração de linguagens (nio-lang / fullstack).
 import type { LanguageId, LanguageRecipe, ScaffoldChoices } from "../../../core/lang.js";
 import { LANGUAGE_IDS } from "../../../core/lang.js";
-import { select, checkbox } from "../../../lib/prompts.js";
+import { select, checkbox } from "../../support/prompts.js";
 import { section } from "../../../lib/colors.js";
 
 const LANG_LABELS: Record<LanguageId, string> = {

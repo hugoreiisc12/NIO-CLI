@@ -1,4 +1,4 @@
-import { confirm } from "../../lib/prompts.js";
+import { confirm } from "../support/prompts.js";
 import {
   resolveDependency,
   isDependencyInstalled,

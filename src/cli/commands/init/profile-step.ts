@@ -1,8 +1,8 @@
 import { basename } from "node:path";
-import { select, input } from "../../../lib/prompts.js";
+import { select, input } from "../../support/prompts.js";
 import { section } from "../../../lib/colors.js";
 import type { Profile } from "../../../core/types.js";
-import type { Ide } from "../../../config.js";
+import type { Ide } from "../../../project-config.js";
 
 /** Rótulos dos perfis (`sessions.profile`) pro prompt do `nio init`. */
 const PROFILE_CHOICES: { name: string; value: Profile }[] = [

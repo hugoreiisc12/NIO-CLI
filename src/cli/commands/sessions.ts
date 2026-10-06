@@ -9,7 +9,7 @@ import {
   AmbiguousSessionError,
 } from "../../app/session-manager.js";
 import type { Session, SessionStatus } from "../../core/types.js";
-import { confirm } from "../../lib/prompts.js";
+import { confirm } from "../support/prompts.js";
 import { section, c, sym } from "../../lib/colors.js";
 import { brand } from "../../brand.js";
 

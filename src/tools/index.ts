@@ -1,25 +1,25 @@
 import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { UserCli } from '../core/types.js';
-import type { ProjectConfig } from '../config.js';
+import type { ProjectConfig } from '../project-config.js';
 
-import * as delegateExec from './delegate-exec.js';
-import * as execStatus from './exec-status.js';
-import * as plan from './plan.js';
-import * as validatePlan from './validate-plan.js';
-import * as profileGet from './profile-get.js';
-import * as sessionList from './session-list.js';
-import * as sessionActivate from './session-activate.js';
-import * as sessionCreate from './session-create.js';
-import * as envMaterialize from './env-materialize.js';
-import * as envDetectDeps from './env-detect-deps.js';
-import * as fabricAsk from './fabric-ask.js';
-import * as fabricMeasure from './fabric-measure.js';
-import * as pbiLocal from './pbi-local.js';
-import * as fabricQuery from './fabric-query.js';
-import * as fabricSchemaSync from './fabric-schema-sync.js';
-import * as fabricWorkspaces from './fabric-workspaces.js';
-import * as fabricDatasets from './fabric-datasets.js';
-import * as taskApprove from './task-approve.js';
+import * as delegateExec from './task/delegate-exec.js';
+import * as execStatus from './task/exec-status.js';
+import * as plan from './task/plan.js';
+import * as validatePlan from './task/validate-plan.js';
+import * as profileGet from './session/profile-get.js';
+import * as sessionList from './session/list.js';
+import * as sessionActivate from './session/activate.js';
+import * as sessionCreate from './session/create.js';
+import * as envMaterialize from './env/materialize.js';
+import * as envDetectDeps from './env/detect-deps.js';
+import * as fabricAsk from './fabric/ask.js';
+import * as fabricMeasure from './fabric/measure.js';
+import * as pbiLocal from './fabric/pbi-local.js';
+import * as fabricQuery from './fabric/query.js';
+import * as fabricSchemaSync from './fabric/schema-sync.js';
+import * as fabricWorkspaces from './fabric/workspaces.js';
+import * as fabricDatasets from './fabric/datasets.js';
+import * as taskApprove from './task/approve.js';
 
 export interface ToolContext {
   /** Identidade v2 resolvida da sessão local (~/.nio/session.json). */

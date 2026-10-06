@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { select } from "../../lib/prompts.js";
+import { select } from "../support/prompts.js";
 import {
   getUserConfigPath,
   writeUserConfig,
@@ -7,7 +7,7 @@ import {
   fixGitignoreForSplit,
   USER_CONFIG_FILE,
   type Ide,
-} from "../../config.js";
+} from "../../project-config.js";
 import { c, sym, section } from "../../lib/colors.js";
 import { brand } from "../../brand.js";
 

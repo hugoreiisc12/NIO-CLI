@@ -1,4 +1,4 @@
-import { select } from "../../../lib/prompts.js";
+import { select } from "../../support/prompts.js";
 import { section } from "../../../lib/colors.js";
 import type { Profile } from "../../../core/types.js";
 import type { EnvironmentRecipe } from "../../../core/environment.js";

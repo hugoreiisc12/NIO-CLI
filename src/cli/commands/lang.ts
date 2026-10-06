@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { syncLangRepos } from "../../adapters/lang/vendor.js";
 import { section, c, sym } from "../../lib/colors.js";
-import { startSpinner } from "../../lib/spinner.js";
+import { startSpinner } from "../support/spinner.js";
 
 /** `nio lang …` — conhecimento/config das linguagens (server nativo `nio-lang`). */
 export function registerLangCommand(program: Command): void {

@@ -9,13 +9,13 @@ import type { McpSpec } from "../../../core/environment.js";
 import type { EnvironmentConfig } from "../../../core/types.js";
 import type { SessionManager } from "../../../app/session-manager.js";
 import { c, sym } from "../../../lib/colors.js";
-import { confirm } from "../../../lib/prompts.js";
-import { readConfigFile, writeConfigFile } from "../../../lib/auth/nio-config.js";
+import { confirm } from "../../support/prompts.js";
+import { readConfigFile, writeConfigFile } from "../../auth/nio-config.js";
 import {
   promptN8nNativeCredentials,
   verifyN8nNativeCredentials,
   n8nNativeStatus,
-} from "../../../lib/auth/n8n-config.js";
+} from "../../auth/n8n-config.js";
 import { n8nMcp, buildN8nNativeMcp } from "../../../profiles/mcps.js";
 import { readToolsCache } from "../../../adapters/n8n/tools-cache.js";
 

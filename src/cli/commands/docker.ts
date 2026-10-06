@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import type { Command } from "commander";
 import { brand } from "../../brand.js";
 import { c, sym, section, link } from "../../lib/colors.js";
-import { input, confirm } from "../../lib/prompts.js";
+import { input, confirm } from "../support/prompts.js";
 import {
   CLUSTER_STACK,
   DOCKER_MCP_URL,
@@ -25,10 +25,10 @@ import {
 } from "../../lib/docker/health.js";
 import { upsertOpencodeMcp } from "../../lib/clients/client-configs.js";
 import { isBinaryInstalled } from "../../lib/clients/client-install.js";
-import { ensureHeadroomRunning, headroomHealthy, HEADROOM_URL } from "../../lib/headroom.js";
-import { gatewayHealth } from "../../lib/auth/gateway-process.js";
+import { ensureHeadroomRunning, headroomHealthy, HEADROOM_URL } from "../support/headroom.js";
+import { gatewayHealth } from "../auth/gateway-process.js";
 import { GATEWAY_URL } from "../../gateway/config.js";
-import { openUrl } from "../../lib/open-url.js";
+import { openUrl } from "../support/open-url.js";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
 import { SessionManager } from "../../app/session-manager.js";
 import { createDockerGateway } from "../../adapters/docker/docker-gateway.js";

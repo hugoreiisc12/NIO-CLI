@@ -1,11 +1,11 @@
 import type { Command } from "commander";
 import { existsSync } from "node:fs";
-import { getProjectConfigPath, loadProjectConfig } from "../../config.js";
+import { getProjectConfigPath, loadProjectConfig } from "../../project-config.js";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
 import { ping, closePool } from "../../adapters/pg/client.js";
 import { SessionManager } from "../../app/session-manager.js";
 import { isBinaryInstalled } from "../../lib/clients/client-install.js";
-import { headroomHealthy, HEADROOM_URL } from "../../lib/headroom.js";
+import { headroomHealthy, HEADROOM_URL } from "../support/headroom.js";
 import { skillsCached } from "../../lib/skills/skills-cache.js";
 import { opencodeGlobalPath } from "../../lib/clients/client-configs.js";
 import { section, c, sym } from "../../lib/colors.js";

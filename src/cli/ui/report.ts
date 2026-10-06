@@ -1,4 +1,4 @@
-import { select } from "../../lib/prompts.js";
+import { select } from "../support/prompts.js";
 import { c, sym } from "../../lib/colors.js";
 
 /**

@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import type { Command } from "commander";
 import { VERSION } from "../../version.js";
 import { c, sym } from "../../lib/colors.js";
-import { openUrl } from "../../lib/open-url.js";
+import { openUrl } from "../support/open-url.js";
 import { homePath } from "../../brand.js";
 
 export function registerDocsCommand(program: Command): void {

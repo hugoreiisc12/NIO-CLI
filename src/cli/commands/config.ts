@@ -4,13 +4,8 @@
  */
 import type { Command } from "commander";
 import { c, sym } from "../../lib/colors.js";
-import {
-  CONFIG_FILE,
-  checkConfig,
-  probeAiBackend,
-  runConfigWizard,
-} from "../../lib/auth/nio-config.js";
-import { describeFabricConfig, fabricConfigStatus } from "../../lib/auth/fabric-config.js";
+import { CONFIG_FILE, checkConfig, probeAiBackend, runConfigWizard } from "../auth/nio-config.js";
+import { describeFabricConfig, fabricConfigStatus } from "../auth/fabric-config.js";
 import { continueChain } from "../flows/onboarding.js";
 
 const LABEL = { missing: "faltando", invalid: "inválido", unreachable: "sem conexão" } as const;

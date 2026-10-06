@@ -3,12 +3,12 @@
  * conduz pro próximo passo, em vez de cada comando morrer no shell. Usada pelo
  * `nio` sem args, pelo `nio start`, e como tail-call de `login`/`config setup`.
  */
-import { confirm, select } from "../../lib/prompts.js";
+import { confirm, select } from "../support/prompts.js";
 import { box, c, cmd, sym } from "../../lib/colors.js";
 import { dlog } from "../../lib/debug.js";
-import { checkConfig } from "../../lib/auth/nio-config.js";
+import { checkConfig } from "../auth/nio-config.js";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
-import { gatewayHealth, ensureGatewayRunning } from "../../lib/auth/gateway-process.js";
+import { gatewayHealth, ensureGatewayRunning } from "../auth/gateway-process.js";
 import { SessionManager } from "../../app/session-manager.js";
 
 export type Stage = "config" | "gateway" | "login" | "session" | "ready";
@@ -58,7 +58,7 @@ function gatewayDownBox(): string {
 /** Executa o passo de um estágio. Imports lazy quebram o ciclo com auth.ts/init. */
 async function runStage(stage: Exclude<Stage, "ready">): Promise<void> {
   if (stage === "config") {
-    const { runConfigWizard } = await import("../../lib/auth/nio-config.js");
+    const { runConfigWizard } = await import("../auth/nio-config.js");
     await runConfigWizard();
     return;
   }

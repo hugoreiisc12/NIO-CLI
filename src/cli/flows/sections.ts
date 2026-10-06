@@ -1,4 +1,4 @@
-import { checkbox, select } from "../../lib/prompts.js";
+import { checkbox, select } from "../support/prompts.js";
 import { skillsDir } from "../../lib/skills/skills.js";
 import {
   discoverRoles,

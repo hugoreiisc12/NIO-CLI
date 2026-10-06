@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test';
 import { toolDefinitions } from './index.js';
-import * as langReference from './lang-reference.js';
-import * as langRecipe from './lang-recipe.js';
+import * as langReference from './lang/reference.js';
+import * as langRecipe from './lang/recipe.js';
 
 /**
  * Nome de tool MCP é **contrato público** (§4.6 da auditoria) — Cowork/Codex e

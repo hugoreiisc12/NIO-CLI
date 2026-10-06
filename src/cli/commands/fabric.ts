@@ -8,7 +8,7 @@ import { c, sym } from "../../lib/colors.js";
 import { fabricGrant, readFabricAuthEnv, type TokenGrant } from "../../adapters/fabric/token.js";
 import { startDeviceAuth, pollDeviceToken } from "../../adapters/fabric/device-code.js";
 import { saveRefreshToken, clearRefreshToken } from "../../adapters/fabric/refresh-store.js";
-import { GRANT_LABEL } from "../../lib/auth/fabric-config.js";
+import { GRANT_LABEL } from "../auth/fabric-config.js";
 import { readMetrics, summarize } from "../../adapters/fabric/query-metrics.js";
 import { createFabricGateway } from "../../adapters/fabric/client.js";
 import type { FabricStatus } from "../../core/fabric.js";
