@@ -1,0 +1,45 @@
+# Overlay de TLS do DEPLOY — liga TLS verificado no Postgres (gateway → banco) e no Kong
+# (cliente → Kong). Aplica POR CIMA de docker-compose.deploy.yml:
+#
+#   docker compose -f docker-compose.deploy.yml -f docker-compose.deploy.tls.yml up -d
+#
+# No Portainer (stack Git): "Additional paths" = docker/docker-compose.deploy.tls.yml.
+# Se a sua versão do Portainer não tiver o campo, copie os blocos abaixo para o compose base.
+#
+# NÃO suba isto antes de cumprir a ordem do runbook (docs/security/runbook-tls.md):
+#   1. Postgres com `ssl = on` e `hostssl` (scripts/db-tls-setup.sh server …) — senão o gateway
+#      NÃO conecta (o overlay não tem fallback inseguro, de propósito: falha fechado).
+#   2. Variáveis do stack definidas: NIO_DATABASE_CA_PEM, NIO_KONG_TLS_CERT, NIO_KONG_TLS_KEY.
+#   3. Clientes com NIO_GATEWAY_URL=https://… e NIO_GATEWAY_CA — o Kong deixa de falar HTTP puro.
+
+configs:
+  pg_ca:
+    content: "${NIO_DATABASE_CA_PEM:?defina NIO_DATABASE_CA_PEM (conteúdo do ca.crt — é público)}"
+  kong_tls_cert:
+    content: "${NIO_KONG_TLS_CERT:?defina NIO_KONG_TLS_CERT (conteúdo do kong.crt)}"
+
+secrets:
+  kong_tls_key:
+    environment: NIO_KONG_TLS_KEY   # kong.key — SEGREDO; nunca como `configs`
+
+services:
+  nio-gateway:
+    environment:
+      NIO_DATABASE_SSL: "true"
+      NIO_DATABASE_CA: /pg-ca.crt
+      NIO_DATABASE_SSL_INSECURE: "0"   # nunca pode valer junto com a CA
+    configs:
+      - source: pg_ca
+        target: /pg-ca.crt
+
+  kong:
+    environment:
+      # TLS na própria porta do proxy: o cliente só troca http:// por https://.
+      KONG_PROXY_LISTEN: "0.0.0.0:8000 ssl"
+      KONG_SSL_CERT: /kong/tls/kong.crt
+      KONG_SSL_CERT_KEY: /run/secrets/kong_tls_key
+    configs:
+      - source: kong_tls_cert
+        target: /kong/tls/kong.crt
+    secrets:
+      - kong_tls_key

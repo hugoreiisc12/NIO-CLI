@@ -522,3 +522,12 @@ mesmo formato da de 2026-09-19.
 
 Arquitetura, banco, qualidade de código e estabilidade da suíte desta mesma
 passada estão em [`../BACKLOG-TECNICO.md`](../BACKLOG-TECNICO.md) — seções 8 a 11.
+
+## Atualização 2026-10-10 — dependências
+
+`bun audit` foi de 7 para **2** vulnerabilidades (ambas `xlsx`, QP-1, ainda sem versão corrigida no npm):
+
+- `@modelcontextprotocol/sdk` 1.30.0 → **1.32.1** (HIGH: OAuth client enviava credencial a um authorization server escolhido pelo servidor MCP).
+- `proxy-addr` (CRITICAL, via express do SDK), `uuid` (via exceljs) e `sharp` (via transformers) forçados por `overrides` em `package.json`; `smol-toml` → 1.9.1.
+- Na prática o `proxy-addr` já era inerte: o gateway é HTTP nativo e os servers MCP são stdio.
+

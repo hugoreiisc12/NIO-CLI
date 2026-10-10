@@ -2,14 +2,16 @@
 
 Pasta de rastreio da auditoria de segurança e do trabalho que ela gerou.
 
-> **Nota (2026-09-19)**: os documentos-fonte listados abaixo foram removidos do
-> repositório no commit `3e8f9b3` (junto com `docs/adr/0002`–`0010`) — não
-> existem mais no working tree nem no histórico git. A tabela de status logo
-> abaixo é o único registro que sobrou; foi parcialmente reverificada por
+> **Nota (2026-10-10)**: os documentos-fonte listados abaixo foram removidos do
+> repositório no commit `3e8f9b3`, mas **continuam no histórico git**
+> (`git show 3e8f9b3^:<caminho>`). Os ADRs `docs/adr/0002`–`0010` foram
+> restaurados em 2026-10-10 por serem referenciados pela documentação de
+> arquitetura. A tabela de status abaixo foi parcialmente reverificada por
 > auditoria externa em 2026-09-19 (JWT `kid`-rotation, checagem de `sub`,
 > `MAX_SESSIONS_PER_USER`, `breach-check.ts`, `db_roles` — todos conferidos
-> diretamente no código e batendo com o que a tabela alega). Links convertidos
-> em texto simples pra não apontar pra arquivos inexistentes.
+> diretamente no código). Links convertidos em texto simples onde o arquivo não existe.
+
+> **TLS (2026-10-10)**: procedimento para ligar TLS verificado no Postgres e no Kong em [`runbook-tls.md`](runbook-tls.md).
 
 | Arquivo | O quê |
 |---------|-------|

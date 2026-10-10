@@ -74,10 +74,9 @@ services:
       NIO_GATEWAY_HOST: "0.0.0.0"       # ouvir na rede do container
       NIO_GATEWAY_PORT: "3000"
       NIO_DATABASE_URL: "${NIO_DATABASE_URL}"   # env var do stack no Portainer
-      # Decisão aceita (não pendência): .142 usa cert self-signed → sem TLS na LAN
-      # (evita DEPTH_ZERO_SELF_SIGNED_CERT). Tooling pra ligar TLS de verdade já
-      # existe (`scripts/db-tls-setup.sh`, CA interna) — falta só executar em
-      # produção, não falta código. Ver docs/BACKLOG-TECNICO.md §4.2.
+      # TLS verificado: aplique o overlay docker-compose.deploy.tls.yml (runbook em
+      # docs/security/runbook-tls.md). Sem ele, o default abaixo segue sem TLS — o
+      # overlay NÃO tem fallback inseguro, então só entra depois do Postgres com `ssl = on`.
       NIO_DATABASE_SSL: "${NIO_DATABASE_SSL:-false}"
       JWT_SECRET: "${JWT_SECRET}"               # env var do stack no Portainer
       NIO_GATEWAY_TOKEN: "${NIO_GATEWAY_TOKEN}" # token compartilhado (app externa)

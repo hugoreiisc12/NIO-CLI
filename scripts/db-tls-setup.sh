@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# CA interna + certificado de servidor pro Postgres self-hosted (auditoria H-2).
-# Só `openssl` — sem AWS/Cloud SQL/step-ca. Roda uma vez pra criar a CA.
+# CA interna + certificados de servidor (Postgres e Kong) — auditoria H-2 / backlog §4.
+# Só `openssl` — sem AWS/Cloud SQL/step-ca. Roda uma vez pra criar a CA; a MESMA CA assina
+# o cert do Postgres (`server`) e o do Kong (`kong`), então o cliente confia numa CA só.
 set -euo pipefail
 
 OUT="${DB_TLS_DIR:-db-tls}"
@@ -22,11 +23,13 @@ cmd_init() {
 
   echo "✓ CA criada:"
   echo "  $OUT/ca.key   → SEGREDO. Guarde offline / no cofre de senhas do time. NÃO commitar."
-  echo "  $OUT/ca.crt   → público. É o NIO_DATABASE_CA."
+  echo "  $OUT/ca.crt   → público. É o NIO_DATABASE_CA e o NIO_GATEWAY_CA."
 }
 
-cmd_server() {
-  [ "$#" -ge 1 ] || die "informe ao menos um hostname/IP (o que os clientes usam no NIO_DATABASE_URL)."
+# Emite <basename>.key/.crt assinado pela CA. Args: <basename> <hostname|ip>...
+issue_cert() {
+  local base="$1"; shift
+  [ "$#" -ge 1 ] || die "informe ao menos um hostname/IP (o que os clientes usam na URL)."
   [ -f "$OUT/ca.key" ] || die "rode \`$0 init\` primeiro."
 
   # SAN: cada arg vira DNS:<x> ou IP:<x> (heurística simples de IPv4).
@@ -36,17 +39,20 @@ cmd_server() {
   done
   san="${san%,}"
 
-  openssl genrsa -out "$OUT/server.key" 4096
-  chmod 600 "$OUT/server.key"
-  openssl req -new -key "$OUT/server.key" -subj "/O=NIO/CN=$1" -out "$OUT/server.csr"
-  openssl x509 -req -in "$OUT/server.csr" -CA "$OUT/ca.crt" -CAkey "$OUT/ca.key" \
+  openssl genrsa -out "$OUT/$base.key" 4096
+  chmod 600 "$OUT/$base.key"
+  openssl req -new -key "$OUT/$base.key" -subj "/O=NIO/CN=$1" -out "$OUT/$base.csr"
+  openssl x509 -req -in "$OUT/$base.csr" -CA "$OUT/ca.crt" -CAkey "$OUT/ca.key" \
     -CAcreateserial -days "$SRV_DAYS" -sha256 \
     -extfile <(printf 'subjectAltName=%s\nextendedKeyUsage=serverAuth\n' "$san") \
-    -out "$OUT/server.crt"
-  rm -f "$OUT/server.csr"
+    -out "$OUT/$base.crt"
+  rm -f "$OUT/$base.csr"
+  echo "✓ $base.crt emitido (SAN: $san), validade ${SRV_DAYS} dias."
+}
 
+cmd_server() {
+  issue_cert server "$@"
   cat <<EOF
-✓ Certificado de servidor emitido (SAN: $san), validade ${SRV_DAYS} dias.
 
   No host do Postgres — copie e dê permissão ao usuário postgres:
     install -o postgres -g postgres -m 600 $OUT/server.key \$PGDATA/server.key
@@ -67,8 +73,24 @@ cmd_server() {
 EOF
 }
 
+cmd_kong() {
+  issue_cert kong "$@"
+  cat <<EOF
+
+  Stack do Kong (Portainer → env vars do stack; o PEM entra como valor multilinha):
+    NIO_KONG_TLS_CERT     = conteúdo de $OUT/kong.crt
+    NIO_KONG_TLS_KEY      = conteúdo de $OUT/kong.key      (SEGREDO)
+    NIO_KONG_PROXY_LISTEN = 0.0.0.0:8000 ssl
+
+  Clientes (cada máquina que roda a CLI):
+    NIO_GATEWAY_URL=https://<host-do-kong>:<porta>      # host = um dos nomes/IPs do SAN
+    NIO_GATEWAY_CA=/caminho/para/ca.crt                 # a MESMA ca.crt do Postgres
+EOF
+}
+
 case "${1:-}" in
   init)   shift; cmd_init "$@" ;;
   server) shift; cmd_server "$@" ;;
-  *) die "uso: $0 init | server <hostname|ip> [<hostname|ip> ...]" ;;
+  kong)   shift; cmd_kong "$@" ;;
+  *) die "uso: $0 init | server <hostname|ip>... | kong <hostname|ip>..." ;;
 esac
