@@ -55,6 +55,7 @@ core/:        types.ts (entidades + enums do schema)
 adapters/:    pg/ (Postgres, driver `pg`)  ide/ (vscode)  pkg/ (npm,pip,…)
               docker/  sms/ (HTTP genérico)  skills/ (cache do repo NIO-SKILLS)  lang/
               agent/ (StepExecutor sobre o opencode serve)
+              fabric/ powerbi/ embed/ (Power BI/Fabric, RAG de DAX)  n8n/
 gateway/:     index.ts (HTTP nativo) · edge-filter.ts · middleware/ · services/
 profiles/:    catálogo dos 6 perfis (hardcoded no fonte)
 ```
@@ -73,8 +74,8 @@ profiles/:    catálogo dos 6 perfis (hardcoded no fonte)
   persistida e o `nio-worker` a executa — fechar o terminal não mata o trabalho.
   Quatro invariantes que **não** se negociam:
   - **Ponto único**: nada fora de `src/app/` importa os repositórios de task.
-    `app/task-boundary.test.ts` falha o build se alguém furar (é o que faltou ao
-    `SessionManager`, furado em 7 pontos).
+    `app/task-boundary.test.ts` falha o build se alguém furar (o mesmo gate
+    existe para o `SessionManager`: `app/session-boundary.test.ts`).
   - **Checkpoint-and-resume, não replay**: LLM não é determinístico e `bash` tem
     efeito colateral. Um step pode rodar duas vezes — efeito externo é idempotente.
   - **`kind` separa quem executa**: `agent` é do worker; `chat` é da TUI, em
@@ -82,6 +83,14 @@ profiles/:    catálogo dos 6 perfis (hardcoded no fonte)
     do usuário.
   - **Nada roda sem decisão**: o default do `PermissionDecider` é `park`. A
     allowlist é `ProfileDefinition.autoApprove`, obrigatória nos 6 perfis.
+
+- **Fabric / Power BI / RAG de DAX** (doc em `docs/arch/ARQUITETURA-FABRIC-RAG.md`):
+  consulta somente-leitura, cache semântico em 3 níveis (replay · adapta · gera) e
+  aprendizado de lições (`agent_lesson`). Invariante: DAX achado por similaridade
+  **nunca** executa sem adaptação — só o hit por hash replica.
+- **Decisões** (ADRs em `docs/adr/`): 0002 perfil como grupo · 0003 gateway dedicado ·
+  0004 operador de IA único · 0005 camada Docker · 0006 2FA · 0007/0009/0010 Headroom ·
+  0008 interface Ink · 0014 Postgres · 0015 exec-delegate.
 
 ## MCP
 

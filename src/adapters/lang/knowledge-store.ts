@@ -6,7 +6,7 @@
  * posterior. O fetch/vendor do cache (git clone dos repos) é a fatia 2
  * (`nio lang sync`). `baseDir` é seam opcional pra teste.
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { type Dirent, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homePath } from '../../brand.js';
 import type { KnowledgeStore, LangReference, LanguageId } from '../../core/lang.js';
@@ -28,7 +28,7 @@ function collectMarkdown(root: string, limit = 300): { abs: string; rel: string 
   const out: { abs: string; rel: string }[] = [];
   const walk = (d: string, rel: string, depth: number): void => {
     if (out.length >= limit || depth > 5) return;
-    let entries;
+    let entries: Dirent[];
     try {
       entries = readdirSync(d, { withFileTypes: true });
     } catch {

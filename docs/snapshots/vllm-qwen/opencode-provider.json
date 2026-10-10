@@ -1,0 +1,37 @@
+{
+  "model": "nio-local/RedHatAI/Qwen3.8-27B-INT4",
+  "provider": {
+    "nio-local": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "NIO local (vLLM)",
+      "options": {
+        "baseURL": "http://192.168.0.140:8001/v1",
+        "apiKey": "local"
+      },
+      "models": {
+        "RedHatAI/Qwen3.8-27B-INT4": {
+          "name": "NIO local (vLLM)",
+          "limit": {
+            "context": 50790,
+            "output": 8192
+          },
+          "attachment": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 8000
+  }
+}

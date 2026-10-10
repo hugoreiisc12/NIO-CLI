@@ -438,7 +438,7 @@ short-term seria uma segunda cópia do que a trilha já guarda.
 `task_steps.output` e o working set guarda só o resumo e o ponteiro. Sem esse
 teto, o JSONB cresce a cada step e vai inteiro no prompt do step seguinte.
 
-## 6.2 Long-term — `agent_memory` (migration `0013_agent_memory.sql`)
+## 6.2 Long-term — `agent_memory` (migration `0016_agent_memory.sql` — `0013`–`0015` já foram usadas)
 
 ```sql
 CREATE TABLE IF NOT EXISTS agent_memory (
@@ -594,7 +594,7 @@ Conferido item a item contra `AGENT.md` e `docs/_rules/nio.md`:
 | Ports de IO nunca lançam | ✅ `TaskResult<T>` no molde de `RagResult`/`LearningResult` |
 | Enums do schema → union types em `core/types.ts` | ✅ `TaskStatus`, `StepStatus` |
 | Tool MCP prefixada `nio_` | ✅ `nio_task_*`, `nio_memory_*`; nomes antigos preservados (§ 4.8) |
-| Schema em `db/schema.sql` + migration incremental | ✅ `0012_durable_tasks.sql`, `0013_agent_memory.sql` |
+| Schema em `db/schema.sql` + migration incremental | ✅ `0012_durable_tasks.sql`; `agent_memory` ainda sem migration (próxima livre: `0016`) |
 | Migrations pelo runner (`bun run db:migrate`) | ✅ — nunca `psql` na mão |
 | Perfis fixos no código | ✅ `autoApprove` entra em `ProfileDefinition` (`core/environment.ts`) |
 | Mensagens de UI/erro em pt-BR | ✅ |
@@ -695,7 +695,7 @@ Barato, e transforma a regra em gate em vez de intenção.
 | # | Fatia | Entrega verificável |
 |---|---|---|
 | 2.1 | `core/memory.ts` — ports de long-term e procedural | Ports compilando |
-| 2.2 | Migration `0013` (`agent_memory`, `procedure`) | Migrate verde |
+| 2.2 | Migration `0016` (`agent_memory`, `procedure`; `0013`–`0015` já usadas) | Migrate verde |
 | 2.3 | `working_set` com teto de 8 KB (§ 6.1) | Step N lê o que o step N-1 deixou |
 | 2.4 | Pipeline de escrita mem0 (ADD/UPDATE/INVALIDATE/NOOP) | Fato repetido não duplica; fato mudado invalida o anterior |
 | 2.5 | `nio_memory_search` + core block no system prompt | Agente recupera preferência de sessão anterior |

@@ -40,7 +40,7 @@ Engine — não exige Docker Desktop.**
   transport `streaming` em `127.0.0.1:8811/mcp`, habilitando o server `docker` do
   catálogo (docker/compose/swarm como tools MCP). Monta `/var/run/docker.sock`
   **direto** — `--servers=docker` precisa criar container (é o ponto). Contenção:
-  rede `nio-infra` isolada + opt-in (`toolkit up/down`). Ver [auditoria M-8](../security/backlog.md).
+  rede `nio-infra` isolada + opt-in (`toolkit up/down`). Ver auditoria M-8 (ver `docs/security/README.md`).
 - **`docker-socket-proxy`** (`tecnativa/docker-socket-proxy`) — proxy **GET-only**
   na frente do socket; o Portainer fala com o daemon só por ele (`-H
   tcp://docker-socket-proxy:2375`), sem montar o socket. Efeito: Portainer

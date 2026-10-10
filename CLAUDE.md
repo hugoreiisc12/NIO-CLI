@@ -1,1 +1,2 @@
-@AGENTS.md
+@AGENT.md
+@docs/_rules/nio.md

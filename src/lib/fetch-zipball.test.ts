@@ -32,7 +32,8 @@ test('codeloadZipUrl: monta a URL do codeload, escapando o ref', () => {
 // --- H-4: teto de tamanho no download ---
 
 function mockFetch(body: Uint8Array, headers: Record<string, string> = {}) {
-  globalThis.fetch = (async () => new Response(body, { status: 200, headers })) as typeof fetch;
+  globalThis.fetch = (async () =>
+    new Response(body as BodyInit, { status: 200, headers })) as unknown as typeof fetch;
 }
 
 test('fetchZipball: baixa o buffer quando dentro do teto', async () => {
@@ -56,7 +57,7 @@ test('fetchZipball: stream que estoura o teto → aborta', async () => {
 });
 
 test('fetchZipball: HTTP != 2xx → lança', async () => {
-  globalThis.fetch = (async () => new Response('nope', { status: 404 })) as typeof fetch;
+  globalThis.fetch = (async () => new Response('nope', { status: 404 })) as unknown as typeof fetch;
   await expect(fetchZipball('https://x/y', { timeoutMs: 1000 })).rejects.toThrow(/HTTP 404/);
 });
 

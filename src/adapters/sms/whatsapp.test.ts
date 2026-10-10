@@ -80,7 +80,7 @@ describe('createWhatsAppSender', () => {
     globalThis.fetch = (async () => {
       called = true;
       return new Response('', { status: 200 });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const r = await createWhatsAppSender({}).sendOtp('+55', '123456');
     expect(r.status).toBe('skipped');
     expect(called).toBe(false);
@@ -108,7 +108,8 @@ describe('createWhatsAppSender', () => {
   });
 
   test('não-2xx → failed com o status', async () => {
-    globalThis.fetch = (async () => new Response('quota', { status: 429 })) as typeof fetch;
+    globalThis.fetch = (async () =>
+      new Response('quota', { status: 429 })) as unknown as typeof fetch;
     const r = await createWhatsAppSender({
       url: 'https://graph.facebook.com/v25.0/x/messages',
       token: 'tok',
@@ -120,7 +121,7 @@ describe('createWhatsAppSender', () => {
   test('fetch lança → failed, não propaga', async () => {
     globalThis.fetch = (async () => {
       throw new Error('ECONNREFUSED');
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     const r = await createWhatsAppSender({
       url: 'https://graph.facebook.com/v25.0/x/messages',
       token: 'tok',

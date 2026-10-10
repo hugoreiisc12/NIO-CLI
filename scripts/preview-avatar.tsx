@@ -4,7 +4,8 @@
  *  2. ícone compacto acima do "pensando" (8 s)
  * Uso: `bun run preview:avatar`. Precisa de TTY; ideal ≥ 100×34.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Text, render, useApp } from 'ink';
 import { ThinkingAvatar } from '../src/tui/avatar-view.js';
 import { useIdentity } from '../src/tui/identity-reveal.js';
@@ -20,6 +21,7 @@ function Preview(): React.ReactElement {
   const [frame, setFrame] = useState(0);
   const started = useRef(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: efeito de gatilho: roda só quando as deps listadas mudam; o corpo lê o closure fresco da própria render
   useEffect(() => {
     identity.tryStart('Quem é você?');
   }, []);
@@ -27,6 +29,7 @@ function Preview(): React.ReactElement {
     if (identity.active) started.current = true;
     else if (started.current) setPhase('thinking');
   }, [identity.active]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: efeito de gatilho: roda só quando as deps listadas mudam; o corpo lê o closure fresco da própria render
   useEffect(() => {
     if (phase !== 'thinking') return;
     const tick = setInterval(() => setFrame((f) => f + 1), TICK_MS);

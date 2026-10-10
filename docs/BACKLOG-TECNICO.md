@@ -14,6 +14,23 @@
 >
 > Reverificações desta passada: **2.1** (7 imports diretos de `createSessionRepository`), **2.2** (agora 11 arquivos > 300 linhas), **3.1** (`log_session`/`session_activity` sem uma única referência em `src/`) e **5.3** (`mcpServerJsPath()` — **confirmado em runtime** no `dist/` construído, ver [§ 10.4](#104-mcpserverjspath-resolve-caminho-inexistente-médio--53-confirmado-em-runtime)) continuam **abertos e reproduzíveis**. O item **1.1** (`@docs/_patterns.md`) **regrediu** — ver [§ 8.3](#83-docs_patternsmd-voltou-ao-agentsmd--item-11-regrediu-baixo). A ressalva de 09-19 sobre 3 erros de `tsc` em `attachments.ts` **caducou** (era drift de `node_modules`, hoje limpo).
 
+> **Atualização 2026-10-10 (2ª passada — TLS e dívida restante)**:
+> - **§ 7.1 (map-reduce serial)**: já estava resolvido (`a7fbbb7`, `Promise.all` + teste de concorrência) — o item estava desatualizado; fechado.
+> - **Funções longas**: `applyEvent` (195 linhas) virou tabela de handlers em `tui/state-events.ts` (`state.ts` caiu para ~100 linhas); `createOpencodeStepExecutor` foi quebrado em `opencode-executor-loop.ts` (laço + tratadores de permissão/pergunta/overflow/corte de saída) e `opencode-executor.ts` (~90 linhas). Mesma suíte, sem alterar asserções.
+> - **Arquivos de teste > 300**: `state.test`, `app.test`, `task-runner.test`, `opencode-executor.test`, `client-configs.test` e `provision.test` divididos por assunto (helpers em `*.test-helpers.ts`, fora do build). Mesmos 86+222 testes, nenhum arquivo `src/` > 300 linhas.
+> - **TLS (§ 4.1, § 4.2, § 6.4) — código/config PRONTOS, execução em produção PENDENTE**: `NIO_GATEWAY_CA` + `https://` no cliente (`lib/auth/gateway-fetch.ts`, testado com TLS real e CA errada/ausente), `scripts/db-tls-setup.sh kong`, overlay `docker/docker-compose.deploy.tls.yml` (falha fechado, sem fallback inseguro) e o procedimento ordenado em [`security/runbook-tls.md`](security/runbook-tls.md). Não foi ligado no compose base de propósito: o stack é GitOps no Portainer e um default `ssl=true` sem o Postgres preparado derrubaria o login. O overlay foi validado só com `docker compose config`; o Kong com cert real não foi subido (sem daemon Docker aqui).
+
+> **Atualização 2026-10-10 (varredura de 9 achados externos, verificados um a um)**: `tsc` ✅ (agora também nos testes) · `bun test` ✅ 1227 pass / 0 fail · `bun audit` 7 → **2** (só `xlsx`, QP-1) · `biome check --error-on-warnings` ✅ zero achados · zero arquivo de produção > 300 linhas.
+> - **Fence em `task_steps`**: `start/reopen/finish/failStep` agora exigem o `fence` da task e devolvem `boolean`; o `TaskRunner` trata `false` como lease perdido. Teste novo em `step-repository.integration.test.ts` e `task-runner.test.ts`.
+> - **§ 11.2 (`bun test` carrega o `.env`)**: já estava fechado por `scripts/test-env.ts`; agora o opt-in `NIO_TEST_DB_OK=1` só vale para host loopback (`NIO_TEST_DB_REMOTE_OK=1` para o resto), porque `reclaimExpired` não filtra por usuário.
+> - **Testes no typecheck**: `tsconfig.test.json` + `@types/bun`; `bun run typecheck` cobre `src/**/*.test.ts(x)` (~50 erros reais corrigidos, incluindo um fake de `StepRepository` sem `reopen`).
+> - **Lint é gate** (`bun run lint` / CI): regras de ruído (`noNonNullAssertion`, `useTemplate`) desligadas em `biome.json`; as 16 `useExhaustiveDependencies` da TUI eram efeitos de gatilho deliberados (nenhum stale closure real — `turnTask.end` é estável) e ficaram com `biome-ignore` justificado. Código morto `isChatDelegated` removido.
+> - **Dependências**: `@modelcontextprotocol/sdk` 1.30 → 1.32.1; `overrides` para `proxy-addr`, `uuid`, `sharp`; `smol-toml` 1.9.1.
+> - **Docs**: ADRs 0002–0010 restaurados do histórico; `ARQUITETURA-FABRIC-RAG.md` novo; README ganhou `nio task`/`nio fabric` e a tabela de comandos foi regerada; `.env.example` cobre worker/Fabric/n8n; `CLAUDE.md` importa `AGENT.md` + `docs/_rules/nio.md` (não depende mais do `AGENTS.md` ignorado); migration do plano F2 renumerada para `0016`.
+> - **§ 5.3 (`mcpServerJsPath`)**: já estava corrigido e coberto por teste (`client-configs-context.test.ts`, caso §10.4) — item fechado.
+> - **§ 2.2**: de 15 arquivos de produção > 300 linhas para 0 (`tui/state.ts` e `app.tsx` em hooks/módulos, `client-configs`, `components`, `docker`, `avatar`, `config`, `token`, `login`, `nio-config`, `gateway/index`, `sync`, `docs/content`, `pg/client`, `opencode-executor`). 
+> - **Não tocado**: `xlsx` (QP-1, sem versão corrigida no npm).
+
 ## Como usar
 
 - **Severidade** segue a mesma escala da análise: CRÍTICO / ALTO / MÉDIO / BAIXO / INFO.
@@ -93,7 +110,7 @@ Reservado para allowlist futuro (comentário da migration 0006). Aceitável hoje
 ### 4.1 TLS ausente entre Kong e cliente no deploy LAN [ALTO — infra, não código]
 `docker/docker-compose.deploy.yml` expõe `KONG_PROXY_LISTEN: "0.0.0.0:8000"` sem `ssl`. JWT, senha e OTP trafegam em claro na LAN do deploy.
 **Ação [decisão]**: adicionar TLS no Kong (cert self-signed + distribuição de CA), ou documentar explicitamente "LAN confiável, TLS fora de escopo" como decisão aceita.
-**Status (2026-09-19)**: reverificado, inalterado — fora de escopo da sprint cirúrgica (infra, não código).
+**Status (2026-10-10)**: decisão tomada — ligar TLS. Código, script e overlay prontos; falta executar o runbook em produção (`security/runbook-tls.md`).
 
 ### 4.2 Postgres TLS com verificação de certificado desligada no deploy [ALTO — já rastreado] — ✅ DOCUMENTADO, ver [§ Resolvido](#resolvido)
 Nota: resolvido só no sentido de formalizar a decisão aceita em comentário — o TLS real em produção **continua pendente**, ver [§ 6](#6-tasks-pendentes-em-produção--não-reverberam-sozinhas).

@@ -24,7 +24,7 @@ import {
   buildSkillPrompt,
 } from './lib/skills/skill-serve.js';
 import { provision } from './lib/provision/provision.js';
-import { type ProvisionTarget } from './lib/clients/targets.js';
+import type { ProvisionTarget } from './lib/clients/targets.js';
 import { ensureSkillsCache, skillsMinCliWarning } from './lib/skills/skills-cache.js';
 import { shouldRunAutoPull, pickProvisionTarget } from './lib/clients/autopull.js';
 import { brand, env } from './brand.js';

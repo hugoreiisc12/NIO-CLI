@@ -128,7 +128,7 @@ function skillInstalledElsewhere(repo: string): boolean {
  */
 export function isDependencyInstalled(dep: ResolvedDependency): boolean {
   // `detect:` vale pra qualquer tipo — inclusive `manual:` (plugins), que não têm plano.
-  if (dep.detect && dep.detect.some(globExists)) return true;
+  if (dep.detect?.some(globExists)) return true;
 
   const plan = dep.plan;
   if (!plan) return false;

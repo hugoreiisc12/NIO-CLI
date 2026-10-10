@@ -83,7 +83,7 @@ export function parseVerdict(text: string): { needsSpec: boolean; reason: string
 
 async function apiValidate(
   prompt: string,
-  project: string,
+  _project: string,
   echo: boolean,
 ): Promise<ValidateResult> {
   try {

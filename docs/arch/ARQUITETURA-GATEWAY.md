@@ -1,7 +1,7 @@
 # Arquitetura do Gateway de Autenticação (v2)
 
 > ⚠️ **Atualização (29 ago–09 set 2026) — o 2º fator foi implementado, mas diferente
-> do desenho abaixo.** Ver [spec 0004](../specs/auth/0004-login-2fa-sms-otp.md) e
+> do desenho abaixo.** Ver spec 0004 (removida do working tree em `3e8f9b3`; ver o ADR 0006) e
 > [ADR 0006](../adr/0006-2fa-sms-otp.md). Resumo das mudanças em relação a este doc:
 > - **Envio do OTP → WhatsApp Business API (Meta Graph)** (`WHATSAPP_ENDPOINT_URL`/
 >   `WHATSAPP_TOKEN`, template de autenticação `autenticao`). Em 29-30 ago o caminho
@@ -214,12 +214,12 @@ tratar desde a primeira migration, não depois:
    guardando isso. Caminho alternativo exigido pelo NIST = 10 códigos de backup
    de uso único no `nio security enable-2fa`. Mensageria = serviço direto no
    `nio-gateway` (sem broker/fila). Rotas novas: `POST /verify-2fa`, `/security/*`.
-   Ver [spec 0004](../specs/auth/0004-login-2fa-sms-otp.md) e
+   Ver spec 0004 (removida do working tree em `3e8f9b3`; ver o ADR 0006) e
    [ADR 0006](../adr/0006-2fa-sms-otp.md).
 
 ## Referências
 
-- [spec 0004](../specs/auth/0004-login-2fa-sms-otp.md) — o fluxo de login + 2º fator atual (SMS OTP).
+- spec 0004 (removida do working tree em `3e8f9b3`; ver o ADR 0006) — o fluxo de login + 2º fator atual (SMS OTP).
 - [ADR 0006](../adr/0006-2fa-sms-otp.md) — a decisão do 2FA (SMS via adapter HTTP genérico).
 - [ADR 0003](../adr/0003-gateway-auth-dedicado.md) — ADR original do Gateway (pré-2FA).
 - `docs/PROGRESSO.md` — histórico cronológico das decisões.
