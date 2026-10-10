@@ -11,11 +11,28 @@
  * Por isso o apagamento é INCONDICIONAL por padrão. Quem quiser rodar os
  * testes de integração de propósito precisa do opt-in explícito
  * `NIO_TEST_DB_OK=1` ao lado de `NIO_DATABASE_URL` — sem isso, colar uma URL
- * de outro terminal não bastaria sozinho pra disparar escrita sem querer.
+ * de outro terminal não bastaria sozinho pra disparar escrita sem querer. Host
+ * que não é loopback ainda exige `NIO_TEST_DB_REMOTE_OK=1`.
  */
-if (process.env.NIO_TEST_DB_OK !== '1') {
-  delete process.env.NIO_DATABASE_URL;
+const LOOPBACK = /^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?)$/;
+
+/** Host da URL, ou `null` se ilegível. */
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
 }
+
+// O opt-in sozinho não basta: `reclaimExpired` (task-queue) mexe em qualquer
+// usuário, então só loopback roda; banco remoto exige `NIO_TEST_DB_REMOTE_OK=1`.
+const url = process.env.NIO_DATABASE_URL;
+const host = url ? hostOf(url) : null;
+const optIn = process.env.NIO_TEST_DB_OK === '1';
+const allowed =
+  optIn && (process.env.NIO_TEST_DB_REMOTE_OK === '1' || (host && LOOPBACK.test(host)));
+if (!allowed) delete process.env.NIO_DATABASE_URL;
 delete process.env.NIO_DATABASE_SSL_INSECURE;
 delete process.env.NIO_DATABASE_CA;
 process.env.NIO_METRICS = '0';

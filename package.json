@@ -49,7 +49,8 @@
   ],
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit",
+    "lint": "biome check --error-on-warnings .",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "build": "node --input-type=commonjs -e \"fs=require('fs');fs.rmSync('dist',{recursive:true,force:true})\" && tsc && node --input-type=commonjs -e \"const fs=require('fs');fs.cpSync('src/cli/copy','dist/cli/copy',{recursive:true});for(const f of ['cli.js','mcp-server.js','gateway/index.js','mcp-server-lang.js','worker.js'])fs.chmodSync('dist/'+f,0o755)\"",
     "gen:docs": "bun run scripts/gen-reference.ts",
     "db:ping": "bun run scripts/db-ping.ts",
@@ -67,38 +68,42 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@node-rs/argon2": "^2.2.0",
     "@opencode-ai/sdk": "1.18.25",
     "adm-zip": "^0.6.1",
     "boxen": "^7.1.1",
     "chalk": "^5.6.2",
     "commander": "^12.1.0",
+    "exceljs": "^4.4.0",
     "ink": "^5.2.1",
     "jimp": "^1.6.1",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "react": "^18.3.1",
-    "smol-toml": "^1.8.0",
+    "smol-toml": "^1.9.1",
     "update-notifier": "^7.3.1",
-    "exceljs": "^4.4.0",
     "zod": "^4.5.4"
   },
   "//optionalDependencies": "Embedder local do RAG de DAX (adapters/embed). Opcional de propósito: puxa binários nativos do onnxruntime (~100MB+) e só quem usa Fabric/RAG precisa. Ausente ou com build nativo falho, o CLI funciona normal — as tools de RAG respondem `unconfigured` pedindo `nio fabric rag setup`. O import é dinâmico, então NUNCA entra no cold-start.",
   "optionalDependencies": {
     "@huggingface/transformers": "^4.3.0"
   },
-  "//overrides": "Força versões corrigidas em transitivas vulneráveis (auditoria QP, 2026-09-30): adm-zip vem duplicado pelo onnxruntime-node num range antigo, fast-uri/ip-address vêm do @modelcontextprotocol/sdk (transporte HTTP — em uso desde o cliente do MCP nativo do n8n, `adapters/n8n/native-client.ts`; os servers da NIO seguem em stdio). Não deixa o `bun audit` zerado sozinho — os 2-3 vulns restantes (xlsx em devDependencies, uuid via exceljs) são de outra origem e estão documentados/aceitos em docs/security/fourth-pass.md.",
+  "//overrides": "Força versões corrigidas em transitivas vulneráveis (auditoria QP, 2026-09-30): adm-zip vem duplicado pelo onnxruntime-node num range antigo, fast-uri/ip-address vêm do @modelcontextprotocol/sdk (transporte HTTP — em uso desde o cliente do MCP nativo do n8n, `adapters/n8n/native-client.ts`; os servers da NIO seguem em stdio). proxy-addr/uuid/sharp forçados em 2026-10-09 (proxy-addr via express do SDK; uuid via exceljs; sharp via transformers). Resta só xlsx (devDependency, sem versão corrigida no npm), aceito em docs/security/fourth-pass.md.",
   "overrides": {
     "adm-zip": "^0.6.1",
     "fast-uri": "^3.1.8",
     "ip-address": "^10.7.2",
     "hono": "^4.13.7",
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "proxy-addr": "^2.0.8",
+    "uuid": "^11.1.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
     "@types/adm-zip": "^0.5.8",
+    "@types/bun": "^1.4.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.20.1",
     "@types/pg": "^8.23.1",

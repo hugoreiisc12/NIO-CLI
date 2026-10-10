@@ -24,7 +24,10 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "style": { "noNonNullAssertion": "off", "useTemplate": "off" },
+      "complexity": { "useLiteralKeys": "off" },
+      "suspicious": { "noTemplateCurlyInString": "off" }
     }
   },
   "javascript": {
@@ -43,6 +46,22 @@
       "javascript": {
         "formatter": {
           "quoteStyle": "double"
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts", "**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noExplicitAny": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["src/tui/markdown.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noArrayIndexKey": "off" }
         }
       }
     }

@@ -1,0 +1,6 @@
+{
+  // Typecheck dos testes (excluídos do build). Só valida: `noEmit`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "types": ["node", "bun"] },
+  "exclude": []
+}
