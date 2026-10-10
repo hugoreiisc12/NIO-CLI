@@ -6,6 +6,7 @@ import {
   rmSync,
   lstatSync,
   readlinkSync,
+  type Stats,
 } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
@@ -105,7 +106,7 @@ function readManifest(path: string): Manifest | null {
 function materializeDanglingLink(dir: string): boolean {
   let cursor = dir;
   for (;;) {
-    let info;
+    let info: Stats;
     try {
       info = lstatSync(cursor);
     } catch {

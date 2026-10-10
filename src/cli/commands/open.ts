@@ -1,6 +1,3 @@
-// `nio open` — abre a IDE da sessão ativa na pasta do projeto (Sprint 2.2).
-// Contrapartida manual da abertura automática no fim do `nio init`.
-import type { Command } from "commander";
 import { loadSession } from "../../lib/auth/cli-session-store.js";
 import { SessionManager } from "../../app/session-manager.js";
 import { createIdeGateway } from "../../adapters/ide/ide-gateway.js";
@@ -15,7 +12,7 @@ export async function runOpen(): Promise<void> {
     process.exit(1);
   }
 
-  let session;
+  let session: Awaited<ReturnType<SessionManager["findActive"]>>;
   try {
     session = await new SessionManager().findActive(stored.userId);
   } catch (err) {

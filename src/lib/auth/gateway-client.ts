@@ -6,6 +6,7 @@
 import { GATEWAY_URL } from '../../gateway/config.js';
 import { getOrCreateGatewayToken } from './gateway-token.js';
 import { dlog } from '../debug.js';
+import { gatewayFetch } from './gateway-fetch.js';
 
 /** Sessão emitida — a CLI grava isto em `~/.nio/session.json`. */
 export interface GatewaySession {
@@ -65,7 +66,7 @@ async function gwFetch(method: string, path: string, init: RequestInit = {}): Pr
   dlog(`${method} ${GATEWAY_URL}${path}`);
   let res: Response;
   try {
-    res = await fetch(`${GATEWAY_URL}${path}`, { method, ...init });
+    res = await gatewayFetch(`${GATEWAY_URL}${path}`, { method, ...init });
   } catch (err) {
     throw unreachableError(err);
   }

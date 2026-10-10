@@ -84,7 +84,7 @@ dbTest(
       const sms2 = captureOtp();
       const s2 = await login(user.name, password, { sms: sms2 });
       if (!s2.ok || s2.step !== '2fa_required') throw new Error('esperava 2fa_required');
-      let last;
+      let last: Awaited<ReturnType<typeof verifyLogin>> | undefined;
       for (let i = 0; i < 3; i++) last = await verifyLogin(s2.challengeId, '000000', 'otp');
       expect(last!.ok).toBe(false);
       if (last!.ok) throw new Error();

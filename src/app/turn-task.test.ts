@@ -31,11 +31,12 @@ function repos(): {
   const steps = {
     insertAll: async (_t: string, novos: readonly { stepNumber: number; name: string }[]) =>
       novos.map((s) => ({ id: 42, stepNumber: s.stepNumber, name: s.name }) as TaskStep),
-    start: async () => {},
-    finish: async (id: number, r: unknown) => {
+    start: async () => true,
+    finish: async (id: number, _fence: number, r: unknown) => {
       registro.finalizados.push({ id, r });
+      return true;
     },
-    failStep: async () => {},
+    failStep: async () => true,
   } as unknown as StepRepository;
   return { tasks, steps, registro };
 }
@@ -142,7 +143,7 @@ function delegacao(opts: { setStatusOk?: boolean; findById?: unknown } = {}) {
   const tasks = {
     findById: async () =>
       opts.findById === undefined ? { id: 'task-1', fence: 0 } : opts.findById,
-    setStatus: async (id: string, status: string, fence: number, patch: unknown) => {
+    setStatus: async (_id: string, status: string, fence: number, patch: unknown) => {
       chamadas.push(`setStatus:${status}:${fence}:${JSON.stringify(patch)}`);
       return opts.setStatusOk ?? true;
     },
@@ -150,6 +151,7 @@ function delegacao(opts: { setStatusOk?: boolean; findById?: unknown } = {}) {
   const steps = {
     reopen: async (id: number) => {
       chamadas.push(`reopen:${id}`);
+      return true;
     },
   } as unknown as StepRepository;
   const queue = {

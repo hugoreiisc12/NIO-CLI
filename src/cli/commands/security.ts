@@ -203,7 +203,7 @@ async function runChangePassword(): Promise<void> {
 
 async function runStatus(opts: { json?: boolean }): Promise<void> {
   const token = await requireToken();
-  let st;
+  let st: Awaited<ReturnType<typeof gatewaySecurity.status>>;
   try {
     st = await gatewaySecurity.status(token);
   } catch (err) {

@@ -22,19 +22,20 @@ afterEach(() => {
 });
 
 test('gatewayHealth: status 200 → true', async () => {
-  globalThis.fetch = (async () => new Response('{"ok":true}', { status: 200 })) as typeof fetch;
+  globalThis.fetch = (async () =>
+    new Response('{"ok":true}', { status: 200 })) as unknown as typeof fetch;
   expect(await gatewayHealth()).toBe(true);
 });
 
 test('gatewayHealth: status != 200 → false', async () => {
-  globalThis.fetch = (async () => new Response('nope', { status: 503 })) as typeof fetch;
+  globalThis.fetch = (async () => new Response('nope', { status: 503 })) as unknown as typeof fetch;
   expect(await gatewayHealth()).toBe(false);
 });
 
 test('gatewayHealth: fetch rejeita (gateway fora) → false, não lança', async () => {
   globalThis.fetch = (async () => {
     throw new Error('ECONNREFUSED');
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   expect(await gatewayHealth()).toBe(false);
 });
 
@@ -88,14 +89,14 @@ test('classifyGatewayVersion: igual→ok; patch→warn; CLI>gateway minor→bloc
 
 test('checkGatewayVersion: lê /health via fetch e classifica; rede fora → warn sem lançar', async () => {
   globalThis.fetch = (async () =>
-    new Response('{"ok":true,"version":"0.9.0"}', { status: 200 })) as typeof fetch;
+    new Response('{"ok":true,"version":"0.9.0"}', { status: 200 })) as unknown as typeof fetch;
   expect(await checkGatewayVersion('http://x')).toEqual({
     status: 'block',
     detail: expect.stringMatching(/atualize o gateway/i),
   });
   globalThis.fetch = (async () => {
     throw new Error('ECONNREFUSED');
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   expect((await checkGatewayVersion('http://x')).status).toBe('warn');
 });
 

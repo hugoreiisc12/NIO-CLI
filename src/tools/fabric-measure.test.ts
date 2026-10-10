@@ -4,7 +4,8 @@ import { runFabricMeasure } from './fabric-measure.js';
 const COM_FORMULA =
   'Medida: 2024_FAT_BRUTO\nTabela: VISAO_COMERCIAL\nExpressão DAX: CALCULATE([X])';
 const SEM_FORMULA = 'Medida: OUTRA\nTabela: VISAO_COMERCIAL';
-const texto = (r: { content: { text?: string }[] }) => String(r.content[0]?.text ?? '');
+const texto = (r: { content: { type: string; text?: string }[] }) =>
+  String(r.content[0]?.text ?? '');
 
 test('ACEITE: devolve a formula real — o agente nao precisa deduzir por tentativa', () => {
   // O modelo vinha reproduzindo valores ate "bater os centavos" e chegava numa formula

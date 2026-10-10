@@ -1,5 +1,4 @@
 import { test, expect } from 'bun:test';
-import React from 'react';
 import { render } from 'ink-testing-library';
 import { CYCLE, stepFrames, type Step } from '../avatar.js';
 import {

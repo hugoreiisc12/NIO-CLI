@@ -57,10 +57,6 @@ function fakeStep(n: number, status: StepStatus, output?: unknown, error?: strin
     error: error ?? null,
     startedAt: null,
     completedAt: null,
-    awaitingKind: null,
-    awaitingSubject: null,
-    approvedTools: [],
-    kind: 'agent',
   };
 }
 

@@ -2,6 +2,7 @@ import { test, expect } from 'bun:test';
 import { usageGuide } from './help-guide.js';
 import { buildProgram } from './program.js';
 
+// biome-ignore lint/suspicious/noControlCharactersInRegex: casa o escape ANSI de propósito
 const strip = (s: string): string => s.replace(/\x1b\[[0-9;]*m/g, '');
 
 test('usageGuide: cobre o fluxo de começo e a UX do `nio ai`', () => {
@@ -20,7 +21,10 @@ test('usageGuide: cobre o fluxo de começo e a UX do `nio ai`', () => {
 function helpOf(cmd: { outputHelp: () => void }): string {
   let out = '';
   const orig = process.stdout.write.bind(process.stdout);
-  process.stdout.write = ((s: string) => ((out += s), true)) as typeof process.stdout.write;
+  process.stdout.write = ((s: string) => {
+    out += s;
+    return true;
+  }) as typeof process.stdout.write;
   try {
     cmd.outputHelp();
   } finally {

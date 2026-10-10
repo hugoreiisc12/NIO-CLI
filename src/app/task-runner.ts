@@ -46,6 +46,11 @@ class LeasePerdidoError extends Error {
   }
 }
 
+/** Escrita de step recusada pelo fence = outro worker assumiu a task. */
+function exigirLease(gravado: boolean): void {
+  if (!gravado) throw new LeasePerdidoError();
+}
+
 export class TaskRunner {
   private readonly tasks: TaskRepository;
   private readonly steps: StepRepository;
@@ -161,7 +166,7 @@ export class TaskRunner {
       const step = await this.steps.nextPending(task.id);
       if (!step) return false;
 
-      await this.steps.start(step.id); // CHECKPOINT
+      exigirLease(await this.steps.start(step.id, task.fence)); // CHECKPOINT
       // Trilha já concluída (exclui o step atual, que acabou de virar `running`):
       // o executor usa isto pra montar contexto de continuidade se precisar
       // recriar a sessão do motor no meio do step (estouro de contexto).
@@ -174,8 +179,11 @@ export class TaskRunner {
         // Step com halt NUNCA vira `done`: seguir adiante gravaria trabalho pela metade.
         // E o `start` acima já o pôs em `running` — sem o `reopen`, o `nextPending`
         // nunca mais o acharia e a task não retomaria após `nio task approve`.
-        if (t.mantemStepPendente) await this.steps.reopen(step.id);
-        else await this.steps.failStep(step.id, outcome.halt.reason);
+        exigirLease(
+          t.mantemStepPendente
+            ? await this.steps.reopen(step.id, task.fence)
+            : await this.steps.failStep(step.id, task.fence, outcome.halt.reason),
+        );
         // Persistir O QUE bloqueou não é telemetria: sem isto o `nio task show`
         // não diz o que liberar e o `approve` não tem alvo — a task fica presa
         // num estado que ninguém sabe destravar.
@@ -196,12 +204,13 @@ export class TaskRunner {
         return true;
       }
 
-      await this.steps.finish(step.id, {
+      const gravado = await this.steps.finish(step.id, task.fence, {
         output: outcome.output,
         toolCalls: outcome.toolCalls,
         tokensIn: outcome.tokensIn,
         tokensOut: outcome.tokensOut,
       }); // CHECKPOINT
+      exigirLease(gravado);
       await this.tasks.setStatus(task.id, 'running', task.fence, {
         currentStep: step.stepNumber,
         ...(outcome.engineSessionId ? { engineSessionId: outcome.engineSessionId } : {}),

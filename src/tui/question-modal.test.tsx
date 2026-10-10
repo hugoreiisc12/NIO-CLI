@@ -1,5 +1,4 @@
 import { test, expect } from 'bun:test';
-import React from 'react';
 import { render } from 'ink-testing-library';
 import { stripAnsi } from './test-utils.js';
 import { QuestionModal } from './question-modal.js';

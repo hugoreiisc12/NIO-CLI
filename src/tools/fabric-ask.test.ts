@@ -45,7 +45,7 @@ function deps(opts: { exact?: ScoredTemplate | null; generated?: string } = {}):
 }
 
 /** Payload JSON que a tool devolve. */
-function payload(res: { content: { text?: string }[] }): Record<string, unknown> {
+function payload(res: { content: { type: string; text?: string }[] }): Record<string, unknown> {
   return JSON.parse(res.content[0]!.text!) as Record<string, unknown>;
 }
 
@@ -56,7 +56,7 @@ test('definition: nome prefixado e question obrigatória', () => {
 
 test('resposta expõe o DAX usado, a origem e as linhas', async () => {
   const res = await runFabricAsk(deps(), 'ws', 'ds', 'qual o total de vendas');
-  const out = payload(res as { content: { text?: string }[] });
+  const out = payload(res as { content: { type: string; text?: string }[] });
   expect(out.dax).toBe('EVALUATE ROW("Total", 10)');
   expect(out.row_count).toBe(1);
   expect(out.rows).toEqual([{ Total: 10 }]);
@@ -65,7 +65,7 @@ test('resposta expõe o DAX usado, a origem e as linhas', async () => {
 
 test('hit exato é rotulado como cache (custo legível pro agente)', async () => {
   const res = await runFabricAsk(deps({ exact: TEMPLATE }), 'ws', 'ds', 'qual o total de vendas');
-  const out = payload(res as { content: { text?: string }[] });
+  const out = payload(res as { content: { type: string; text?: string }[] });
   expect(String(out.origem)).toContain('cache');
   expect(out.dax).toBe(TEMPLATE.dax);
 });
@@ -78,7 +78,7 @@ test('embedder ausente → erro acionável, isError marcado', async () => {
   };
   const res = (await runFabricAsk(d, 'ws', 'ds', 'qualquer')) as {
     isError?: boolean;
-    content: { text?: string }[];
+    content: { type: string; text?: string }[];
   };
   expect(res.isError).toBe(true);
   expect(res.content[0]!.text).toContain('não habilitada');
@@ -90,7 +90,7 @@ test('falha do Fabric vira erro de tool, não exceção', async () => {
   d.fabric.executeDax = async () => ({ status: 'failed', error: "Cannot find table 'X'." });
   const res = (await runFabricAsk(d, 'ws', 'ds', 'qualquer')) as {
     isError?: boolean;
-    content: { text?: string }[];
+    content: { type: string; text?: string }[];
   };
   expect(res.isError).toBe(true);
   expect(res.content[0]!.text).toContain("Cannot find table 'X'");

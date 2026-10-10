@@ -4,7 +4,7 @@ import { fetchSkills } from "../../../lib/skills/skills-cache.js";
 import { c } from "../../../lib/colors.js";
 import { startSpinner } from "../../../lib/spinner.js";
 import { printProvisionResult } from "../../ui/render.js";
-import { SyncReport, summarizeProvision } from "../../ui/report.js";
+import { type SyncReport, summarizeProvision } from "../../ui/report.js";
 import { track, provisionedItems } from "../../../lib/telemetry.js";
 import { VERSION } from "../../../version.js";
 import type { ProjectConfig } from "../../../config.js";
@@ -12,7 +12,7 @@ import type { ClientChoice } from "./clients-step.js";
 
 /** Só OpenCode por enquanto (decisão de 2026-07-27) — qualquer escolha (ou
  * nenhuma) cai no opencodeTarget. */
-export function resolveProvisionTargets(clientConfigs: ClientChoice[]): Set<ProvisionTarget> {
+export function resolveProvisionTargets(_clientConfigs: ClientChoice[]): Set<ProvisionTarget> {
   return new Set([opencodeTarget]);
 }
 

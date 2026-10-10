@@ -1,4 +1,3 @@
-import type { Command } from "commander";
 import { brand } from "../../../brand.js";
 import { animateMatrixLogo } from "../../../matrix-logo.js";
 import { getProjectConfigPath, type ProjectConfig, type Ide } from "../../../config.js";

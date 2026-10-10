@@ -7,7 +7,8 @@
  * `useStdout().write` — o Ink só aceita UM `<Static>` por árvore e ele já é do
  * histórico do chat. Ao vivo e no scrollback saem da mesma `cardLines`.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import chalk from 'chalk';
 import { ANIM } from '../avatar.js';

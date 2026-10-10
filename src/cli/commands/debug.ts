@@ -1,4 +1,3 @@
-import type { Command } from "commander";
 import { existsSync } from "node:fs";
 import { getProjectConfigPath, loadProjectConfig } from "../../config.js";
 import { loadSession } from "../../lib/auth/cli-session-store.js";

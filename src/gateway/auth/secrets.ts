@@ -55,7 +55,8 @@ function envSinglePepper(): string {
 }
 
 function peppers(): Map<number, Buffer> {
-  return (cache ??= parsePeppers());
+  cache ??= parsePeppers();
+  return cache;
 }
 
 /** Só pra teste — força re-parse na próxima chamada. */
@@ -113,7 +114,8 @@ function parseJwtSecrets(): Map<string, string> {
 }
 
 function jwtSecrets(): Map<string, string> {
-  return (jwtCache ??= parseJwtSecrets());
+  jwtCache ??= parseJwtSecrets();
+  return jwtCache;
 }
 
 /** Só pra teste. */

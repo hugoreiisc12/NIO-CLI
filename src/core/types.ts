@@ -1,5 +1,5 @@
 /**
- * Domínio v2 (orquestrador de ambientes) — vocabulário neutro das 5 tabelas de
+ * Domínio v2 (orquestrador de ambientes) — vocabulário neutro das tabelas de
  * `db/schema.sql`, sem vínculo com o driver de banco. Os adapters (`adapters/pg/*`)
  * produzem/consomem estes shapes; nenhum import de `pg` aqui.
  *

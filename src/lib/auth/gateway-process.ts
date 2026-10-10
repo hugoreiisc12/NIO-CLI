@@ -3,6 +3,7 @@
  * `nio login` sobem o gateway sozinhos quando ele está fora do ar, em vez de
  * mandar o usuário abrir outra janela. Deixa o processo rodando (é serviço).
  */
+import { gatewayFetch } from './gateway-fetch.js';
 import { spawnSync } from 'node:child_process';
 import { spawnPortable } from '../proc.js';
 import { existsSync, openSync, mkdirSync } from 'node:fs';
@@ -23,7 +24,7 @@ export async function gatewayHealth(timeoutMs = 1500): Promise<boolean> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${GATEWAY_URL}/health`, { signal: ctrl.signal });
+    const res = await gatewayFetch(`${GATEWAY_URL}/health`, { signal: ctrl.signal });
     dlog(`gateway /health => ${res.status}`);
     return res.status === 200;
   } catch (err) {
@@ -220,7 +221,9 @@ export async function checkGatewayVersion(
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/health`, { signal: ctrl.signal });
+    const res = await gatewayFetch(`${baseUrl.replace(/\/+$/, '')}/health`, {
+      signal: ctrl.signal,
+    });
     if (!res.ok) return { status: 'warn', detail: `gateway respondeu ${res.status} no /health` };
     return classifyGatewayVersion(VERSION, await res.json().catch(() => ({})));
   } catch (err) {

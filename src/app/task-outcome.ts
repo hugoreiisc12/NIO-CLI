@@ -46,7 +46,7 @@ export function haltParaTransicao(halt: StepHalt): TransicaoTask {
  * corta `nextSteps` no teto (fatia 1.7) e não tem estado próprio pra "acabou o
  * orçamento" — é aqui que isso vira falha em vez de loop infinito.
  */
-export function incompletoSemSaida(nextSteps: readonly unknown[], motivo: string): TransicaoTask {
+export function incompletoSemSaida(_nextSteps: readonly unknown[], motivo: string): TransicaoTask {
   return {
     status: 'failed',
     error: `Teto de passos atingido sem concluir: ${motivo}`,

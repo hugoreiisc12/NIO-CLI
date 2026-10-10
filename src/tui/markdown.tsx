@@ -2,7 +2,7 @@
  * Markdown mínimo → Ink. Cobre o que o assistant costuma mandar: blocos de código
  * ```…```, **negrito**, `código inline`, e `# títulos`. Sem dependência.
  */
-import React from 'react';
+import type React from 'react';
 import { Box, Text } from 'ink';
 import { theme } from './theme.js';
 

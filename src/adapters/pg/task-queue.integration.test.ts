@@ -189,7 +189,7 @@ dbTest('crash no meio de um step: o step interrompido volta pra fila junto', asy
       { stepNumber: 10, name: 'a' },
       { stepNumber: 20, name: 'b' },
     ]);
-    await steps.start(a!.id); // worker morre AQUI, com o step em `running`
+    await steps.start(a!.id, t.fence); // worker morre AQUI, com o step em `running`
     await query(`UPDATE tasks SET locked_at = now() - interval '1 hour' WHERE id = $1`, [t.id]);
 
     expect(await fila.reclaimExpired(60_000)).toBe(1);
@@ -216,8 +216,8 @@ dbTest('reclaim não mexe em step já concluído', async () => {
   try {
     const t = (await fila.claim('worker-morto', userId))!;
     const [a] = await steps.insertAll(t.id, [{ stepNumber: 10, name: 'a' }]);
-    await steps.start(a!.id);
-    await steps.finish(a!.id, { output: { text: 'pronto' } });
+    await steps.start(a!.id, t.fence);
+    await steps.finish(a!.id, t.fence, { output: { text: 'pronto' } });
     await query(`UPDATE tasks SET locked_at = now() - interval '1 hour' WHERE id = $1`, [t.id]);
 
     await fila.reclaimExpired(60_000);

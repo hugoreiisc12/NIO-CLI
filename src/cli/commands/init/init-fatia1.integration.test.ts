@@ -76,7 +76,7 @@ dbTest(
       expect(oc.mcp.nio).toBeDefined();
       expect(oc.mcp['nio-lang']).toBeDefined(); // MCP-base (server nativo de linguagens)
       const pgSpec = env.mcps.find((m) => m.id === 'postgres')!;
-      expect(oc.mcp.postgres.command).toEqual(pgSpec.command);
+      expect(oc.mcp.postgres?.command).toEqual(pgSpec.command ?? []);
     } finally {
       // Limpeza: sessão (CASCADE cobre logs/atividades) + usuário descartável + tmp.
       if (sessionId) await sessions.delete(sessionId);

@@ -3,7 +3,7 @@ import { definition as listDef, runSessionList } from './session-list.js';
 import { definition as activateDef, runSessionActivate } from './session-activate.js';
 import { definition as createDef, runSessionCreate } from './session-create.js';
 import {
-  SessionManager,
+  type SessionManager,
   SessionNotFoundError,
   AmbiguousSessionError,
 } from '../app/session-manager.js';
@@ -26,7 +26,7 @@ function mkSession(over: Partial<Session> = {}): Session {
   };
 }
 
-const textOf = (r: { content: Array<{ text?: string }> }) => r.content[0]?.text ?? '';
+const textOf = (r: { content: Array<{ type: string; text?: string }> }) => r.content[0]?.text ?? '';
 const fakeManager = (over: Partial<SessionManager>) => over as unknown as SessionManager;
 
 test('definitions: nomes prefixados e schema fechado', () => {

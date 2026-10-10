@@ -16,7 +16,7 @@ describe('checkPasswordBreach — camada local', () => {
   test('senha comum → breached/common (sem tocar a rede)', async () => {
     globalThis.fetch = (() => {
       throw new Error('não deveria chamar a rede');
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     expect(await checkPasswordBreach('password')).toEqual({ breached: true, source: 'common' });
     expect(await checkPasswordBreach('QWERTY123')).toEqual({ breached: true, source: 'common' });
   });
@@ -25,7 +25,7 @@ describe('checkPasswordBreach — camada local', () => {
     process.env.NIO_HIBP_DISABLE = '1';
     globalThis.fetch = (() => {
       throw new Error('HIBP desligado');
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     expect(await checkPasswordBreach('nK9$rT2p!vZ7wq-Larm')).toEqual({ breached: false });
   });
 });
@@ -39,23 +39,26 @@ describe('checkPasswordBreach — camada HIBP (mock)', () => {
         {
           status: 200,
         },
-      )) as typeof fetch;
+      )) as unknown as typeof fetch;
     expect(await checkPasswordBreach('hunter2')).toEqual({ breached: true, source: 'pwned' });
   });
 
   test('sufixo ausente → breached:false', async () => {
     globalThis.fetch = (async () =>
-      new Response('0000000000000000000000000000000000000:1\n', { status: 200 })) as typeof fetch;
+      new Response('0000000000000000000000000000000000000:1\n', {
+        status: 200,
+      })) as unknown as typeof fetch;
     expect(await checkPasswordBreach('uma-senha-que-nao-vazou-123')).toEqual({ breached: false });
   });
 
   test('rede fora / erro HTTP → fail-open (breached:false)', async () => {
     globalThis.fetch = (async () => {
       throw new Error('ECONNREFUSED');
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     expect(await checkPasswordBreach('uma-senha-que-nao-vazou-123')).toEqual({ breached: false });
 
-    globalThis.fetch = (async () => new Response('nope', { status: 503 })) as typeof fetch;
+    globalThis.fetch = (async () =>
+      new Response('nope', { status: 503 })) as unknown as typeof fetch;
     expect(await checkPasswordBreach('uma-senha-que-nao-vazou-123')).toEqual({ breached: false });
   });
 });

@@ -20,7 +20,11 @@ function makeDeps(over: Partial<SchemaIngestDeps> = {}, refsConhecidos: string[]
   const gravados: number[] = [];
   const deps: SchemaIngestDeps = {
     fabric: {
-      executeDax: async (_w, _d, dax): Promise<FabricResult<FabricRow[]>> => ({
+      executeDax: async (
+        _w: string,
+        _d: string,
+        dax: string,
+      ): Promise<FabricResult<FabricRow[]>> => ({
         status: 'ok',
         data: schemaFor(dax),
       }),

@@ -1,4 +1,3 @@
-import type { Command } from "commander";
 import { readSkillDocs } from "../../lib/skills/skills.js";
 import { section, c, sym } from "../../lib/colors.js";
 import { brand } from "../../brand.js";
@@ -8,7 +7,7 @@ import { brand } from "../../brand.js";
  * `~/.nio/skills/agents/`). Só leitura; mesma fonte que o `init` provisiona.
  */
 export function runAgents(): void {
-  let agents;
+  let agents: ReturnType<typeof readSkillDocs>;
   try {
     agents = readSkillDocs().filter((d) => d.type === "agent");
   } catch (err) {

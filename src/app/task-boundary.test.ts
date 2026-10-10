@@ -2,10 +2,9 @@
  * Gate de arquitetura: nenhuma superfície fora de `src/app/` fala com os
  * repositórios de task direto.
  *
- * Existe porque a alternativa já falhou no projeto: o `SessionManager` declara
- * ser "o ponto ÚNICO" num comentário desde 2026-06 e está furado em 7 arquivos
- * (`cli/commands/{ai,debug,deps,docker,open}.ts`, `cli/flows/onboarding.ts`,
- * `tui/launch.tsx`) — BACKLOG-TECNICO § 2.1, aberto há três meses. Comentário
+ * Existe porque a alternativa já falhou no projeto: o `SessionManager` declarou
+ * ser "o ponto ÚNICO" num comentário desde 2026-06 e ficou furado em 7 arquivos
+ * até 2026-09-30, quando `session-boundary.test.ts` fechou o buraco. Comentário
  * não segura invariante; teste segura.
  *
  * O recorte é `src/app/`, não um arquivo só: a regra de 300 linhas obriga a

@@ -22,7 +22,7 @@ function fakeCatalog(): LanguageCatalog {
   };
 }
 
-const textOf = (r: { content: Array<{ text?: string }> }) => r.content[0]?.text ?? '';
+const textOf = (r: { content: Array<{ type: string; text?: string }> }) => r.content[0]?.text ?? '';
 
 test('definition: nome e schema esperados', () => {
   expect(definition.name).toBe('nio_lang_recipe');

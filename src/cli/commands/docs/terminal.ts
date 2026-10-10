@@ -14,7 +14,7 @@ function codeBlock(text: string): string {
 }
 
 /** Tabela vira lista `termo — descrição` (sem largura fixa, não estoura o terminal). */
-function defList(head: string[], rows: string[][]): string {
+function defList(_head: string[], rows: string[][]): string {
   return rows
     .map((r) => {
       const term = c.bold(r[0] ?? "");

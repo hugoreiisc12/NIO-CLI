@@ -2,7 +2,7 @@ import { test, expect } from 'bun:test';
 import { definition, handler } from './profile-get.js';
 import type { ToolContext } from './index.js';
 
-const textOf = (r: { content: Array<{ text?: string }> }) => r.content[0]?.text ?? '';
+const textOf = (r: { content: Array<{ type: string; text?: string }> }) => r.content[0]?.text ?? '';
 const ctx = {} as ToolContext; // profile_get não usa o contexto
 
 test('definition: nome prefixado e schema fechado', () => {

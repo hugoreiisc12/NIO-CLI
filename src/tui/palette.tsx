@@ -2,11 +2,12 @@
  * Overlays da paleta: painel de info · runner de comando · modal de permissão.
  * (A lista `/` em si é inline no `InputBox` — `SlashList` em `components.tsx`.)
  */
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { spawnPortable } from '../lib/proc.js';
 import { theme, sym } from './theme.js';
-import { permGroupLabel, type PermissionReq, type QuestionReq } from './state.js';
+import { permGroupLabel, type PermissionReq } from './state.js';
 import type { PaletteItem } from './palette-source.js';
 
 export function InfoPanel({
@@ -151,6 +152,7 @@ export function PermissionModal({
       {detail.map((d, i) => (
         // Comando completo, quebrando linha: cortar em 78 col escondia o fim do
         // pipe/`&&` justamente onde mora o que o humano precisa ver antes de aprovar.
+        // biome-ignore lint/suspicious/noArrayIndexKey: linhas posicionais derivadas de texto: sem identidade nem reordenação, o índice é a chave estável
         <Text key={i} color={theme.text} wrap={req.command ? 'wrap' : 'truncate-end'}>
           {'  '}
           {req.command ? d : clip(d, 78)}

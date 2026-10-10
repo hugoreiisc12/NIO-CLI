@@ -163,7 +163,7 @@ test('PromptInput: `\\`+Enter insere nova linha em vez de enviar', async () => {
   stdin.write('\r'); // Enter após o "\"
   await nap();
   expect(lastFrame()).not.toContain('SUBMITTED');
-  const body = (lastFrame() ?? '')
+  const _body = (lastFrame() ?? '')
     .split('\n')
     .filter((l) => l.includes('linha') || l.trim() === '›');
   // a "\" virou \n → agora há uma linha "linha" e uma linha vazia

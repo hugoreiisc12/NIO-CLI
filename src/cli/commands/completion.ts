@@ -51,7 +51,7 @@ function bashScript(root: CmdNode): string {
 _${bin}() {
   local cur="\${COMP_WORDS[COMP_CWORD]}"
   local __c=""
-  if [ "\$COMP_CWORD" -eq 1 ]; then
+  if [ "$COMP_CWORD" -eq 1 ]; then
     __c="${top}"
   else
     case "\${COMP_WORDS[1]}" in
@@ -59,7 +59,7 @@ ${arms}
     *) __c="--help" ;;
     esac
   fi
-  COMPREPLY=( \$(compgen -W "\$__c" -- "\$cur") )
+  COMPREPLY=( $(compgen -W "$__c" -- "$cur") )
 }
 complete -F _${bin} ${bin}`;
 }

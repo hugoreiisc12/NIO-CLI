@@ -4,8 +4,8 @@
  * nenhuma superfície fora de `src/app/` importa os repositórios direto.
  *
  * Isso não é promessa de comentário — `task-boundary.test.ts` falha o build se
- * alguém furar. O `SessionManager` faz a mesma declaração desde 2026-06 e está
- * furado em 7 pontos (BACKLOG-TECNICO § 2.1) justamente por não ter esse teste.
+ * alguém furar. O `SessionManager` fez a mesma declaração desde 2026-06 e ficou
+ * furado em 7 pontos até 2026-09-30, quando ganhou o gate `session-boundary.test.ts`.
  *
  * Sem IO direto: repos e fila são injetáveis (default = implementações reais),
  * então o ciclo de vida é testável sem banco.

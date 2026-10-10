@@ -24,7 +24,7 @@ function fakeServer(rotaValida: string, corpo: unknown) {
       status: 200,
       headers: { 'content-type': 'text/html' },
     });
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   return chamadas;
 }
 
@@ -63,7 +63,7 @@ test('corpo que não é array vira null (não confia em resposta estranha)', asy
 test('rede fora → null, para a fila não ser apagada', async () => {
   globalThis.fetch = (async () => {
     throw new Error('ECONNREFUSED');
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   expect(await fetchPendingQuestions(BASE)).toBeNull();
 });
 

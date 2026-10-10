@@ -11,7 +11,7 @@ const baseRow = {
   timestamp_password_change: null,
   auth_2: false,
   phone: null,
-  backup_codes: null,
+  backup_codes: null as string | null,
   backup_pepper_id: 0,
   timestamp_last_session: null,
   ips_using: '["10.0.0.1","10.0.0.2"]',
@@ -48,7 +48,8 @@ test('create: rejeita senha curta antes de tocar o banco (enforce server-side)',
 });
 
 test('mapUserRow expõe phone mas nunca backup_codes', () => {
-  const user = mapUserRow({ ...baseRow, phone: '+5511999999999', backup_codes: 'h1|h2' });
+  const row = { ...baseRow, phone: '+5511999999999', backup_codes: 'h1|h2' };
+  const user = mapUserRow(row);
   expect(user.phone).toBe('+5511999999999');
   expect('backup_codes' in user).toBe(false);
   expect('backupCodes' in user).toBe(false);

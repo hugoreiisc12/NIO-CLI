@@ -86,7 +86,7 @@ export async function handler(args: unknown, ctx: ToolContext): Promise<CallTool
     return errorResult(`Pasta do projeto não encontrada: ${projectPath}`);
   }
 
-  let recipe;
+  let recipe: NonNullable<ReturnType<ReturnType<typeof createRecipeCatalog>['get']>> | undefined;
   if (recipeSlug) {
     recipe = createRecipeCatalog().get(recipeSlug) ?? undefined;
     if (!recipe)

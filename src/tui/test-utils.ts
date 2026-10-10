@@ -4,7 +4,7 @@
  * `.lastFrame()` logo depois de um `render()`/`stdin.write()` pode pegar um frame
  * intermediário. `waitForFrame` faz polling até a asserção passar ou estourar.
  */
-import React from 'react';
+import type React from 'react';
 import { render } from 'ink-testing-library';
 
 /**
@@ -13,7 +13,7 @@ import { render } from 'ink-testing-library';
  * string — o que quebra `.toContain('hello')`. Piped/CI o Ink já manda texto
  * puro. Normalizar aqui deixa os testes iguais nos dois cenários.
  */
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: casa o escape ANSI de propósito
 const ANSI = /\x1b\[[0-9;]*m/g;
 export const stripAnsi = (s: string | undefined): string => (s ?? '').replace(ANSI, '');
 

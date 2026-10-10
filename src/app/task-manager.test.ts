@@ -70,10 +70,6 @@ function fakeStep(stepNumber: number, name: string, status: StepStatus = 'pendin
     error: null,
     startedAt: null,
     completedAt: null,
-    awaitingKind: null,
-    awaitingSubject: null,
-    approvedTools: [],
-    kind: 'agent',
   };
 }
 
@@ -105,7 +101,7 @@ function fakeRepo(tasks: Task[]): { repo: TaskRepository; criadas: NewTaskInput[
     },
     approve: async (id) => {
       const t = tasks.find((x) => x.id === id);
-      if (!t || t.status !== 'waiting_approval') return false;
+      if (t?.status !== 'waiting_approval') return false;
       t.status = 'pending';
       return true;
     },
@@ -130,9 +126,18 @@ function fakeSteps(steps: TaskStep[] = []): StepRepository {
     async nextPending() {
       return steps.find((s) => s.status === 'pending') ?? null;
     },
-    async start() {},
-    async finish() {},
-    async failStep() {},
+    async start() {
+      return true;
+    },
+    async reopen() {
+      return true;
+    },
+    async finish() {
+      return true;
+    },
+    async failStep() {
+      return true;
+    },
     async retry() {
       return steps[0]!;
     },

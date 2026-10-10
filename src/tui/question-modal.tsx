@@ -10,7 +10,8 @@
  * `custom` não é enfeite: sem ele, uma pergunta cujas opções não cobrem o caso real
  * vira beco sem saída — não há como dizer "nenhuma dessas".
  */
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { theme, sym } from './theme.js';
 import type { QuestionReq } from './state.js';
@@ -68,7 +69,10 @@ export function QuestionModal({
     // responderia de novo no mesmo vazio, sem saída. Melhor o ↵ não fazer nada.
     if (resposta.every((s) => s.trim() === '')) return;
     const next = [...picked, resposta];
-    if (qIdx + 1 >= total) return onAnswer(next);
+    if (qIdx + 1 >= total) {
+      onAnswer(next);
+      return;
+    }
     setPicked(next);
     setQIdx(qIdx + 1);
     setSel(0);

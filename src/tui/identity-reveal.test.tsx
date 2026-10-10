@@ -1,5 +1,6 @@
 import { test, expect, afterEach, beforeEach } from 'bun:test';
-import React, { useEffect, useRef } from 'react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
 import { render } from 'ink-testing-library';
 import { envName } from '../brand.js';
 import { IDENTITY } from './identity.js';
@@ -30,7 +31,7 @@ function Harness({
   rows: number;
   columns: number;
   seen: { started?: boolean; identity?: Identity };
-}): React.ReactElement {
+}): React.ReactElement | null {
   const identity = useIdentity(rows, columns);
   seen.identity = identity;
   const started = useRef(false);

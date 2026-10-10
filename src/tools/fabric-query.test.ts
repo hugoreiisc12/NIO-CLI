@@ -15,7 +15,7 @@ test('runFabricQuery: ok → jsonResult com row_count e rows', async () => {
   const rows = [{ 'T[A]': 1 }, { 'T[A]': 2 }];
   const out = await runFabricQuery(gwWith({ status: 'ok', data: rows }), 'ws', 'ds', 'EVALUATE T');
   expect(out.isError).toBeUndefined();
-  expect(JSON.parse(out.content[0]!.text as string)).toEqual({ row_count: 2, rows });
+  expect(JSON.parse((out.content[0] as { text: string }).text)).toEqual({ row_count: 2, rows });
 });
 
 test('runFabricQuery: failed → errorResult com a causa', async () => {
@@ -26,7 +26,7 @@ test('runFabricQuery: failed → errorResult com a causa', async () => {
     'EVALUATE ?',
   );
   expect(out.isError).toBe(true);
-  expect(out.content[0]!.text).toContain('erro de sintaxe');
+  expect((out.content[0] as { text: string }).text).toContain('erro de sintaxe');
 });
 
 test('runFabricQuery: unauthorized → errorResult explicando SP/RLS', async () => {
@@ -37,13 +37,13 @@ test('runFabricQuery: unauthorized → errorResult explicando SP/RLS', async () 
     'EVALUATE T',
   );
   expect(out.isError).toBe(true);
-  expect(out.content[0]!.text).toContain('Sem acesso ao Fabric');
+  expect((out.content[0] as { text: string }).text).toContain('Sem acesso ao Fabric');
 });
 
 test('handler: dax ausente → argumento inválido', async () => {
   const out = await handler({ workspace_id: 'ws', dataset_id: 'ds' }, ctx);
   expect(out.isError).toBe(true);
-  expect(out.content[0]!.text).toContain('inválido');
+  expect((out.content[0] as { text: string }).text).toContain('inválido');
 });
 
 test('handler: sem ids e sem env default → erro claro, sem tocar a rede', async () => {
@@ -54,7 +54,7 @@ test('handler: sem ids e sem env default → erro claro, sem tocar a rede', asyn
   try {
     const out = await handler({ dax: 'EVALUATE T' }, ctx);
     expect(out.isError).toBe(true);
-    expect(out.content[0]!.text).toContain('NIO_FABRIC_WORKSPACE');
+    expect((out.content[0] as { text: string }).text).toContain('NIO_FABRIC_WORKSPACE');
   } finally {
     if (savedW === undefined) delete process.env.NIO_FABRIC_WORKSPACE;
     else process.env.NIO_FABRIC_WORKSPACE = savedW;
@@ -79,7 +79,9 @@ test('ACEITE: tabela inventada é barrada ANTES de gastar request no Fabric', ()
   ]).then((res) => {
     expect(bateu).toBe(false); // não chegou a chamar a API
     expect(res.isError).toBe(true);
-    expect(String(res.content[0]?.text)).toContain('VISAO_COMERCIAL'); // mostra o que existe
+    expect(String((res.content[0] as { text?: string } | undefined)?.text)).toContain(
+      'VISAO_COMERCIAL',
+    ); // mostra o que existe
   });
 });
 

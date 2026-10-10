@@ -1,8 +1,8 @@
-import { c, sym, cmd, link, badge, section, highlightInlineCode } from "../../lib/colors.js";
+import { c, sym, cmd, link, badge, highlightInlineCode } from "../../lib/colors.js";
 import { brand } from "../../brand.js";
-import { type InstallResult } from "../../lib/clients/client-configs.js";
-import { type ProvisionResult } from "../../lib/provision/provision.js";
-import { type ResolvedDependency } from "../../lib/deps/dependencies.js";
+import type { InstallResult } from "../../lib/clients/client-configs.js";
+import type { ProvisionResult } from "../../lib/provision/provision.js";
+import type { ResolvedDependency } from "../../lib/deps/dependencies.js";
 import { HARNESS_RULES_REL } from "../../lib/clients/harness.js";
 
 export function printInstallResult(label: string, result: InstallResult): void {

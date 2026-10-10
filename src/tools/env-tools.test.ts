@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test';
 import { definition as matDef, runEnvMaterialize } from './env-materialize.js';
 import { definition as detDef, runEnvDetectDeps, type MakeWatcher } from './env-detect-deps.js';
-import { SessionManager, SessionNotFoundError } from '../app/session-manager.js';
+import { type SessionManager, SessionNotFoundError } from '../app/session-manager.js';
 import type { MaterializedSession } from '../app/session-manager.js';
 import type { DependencyWatcher, TickResult } from '../app/dependency-watcher.js';
 import type { Session } from '../core/types.js';
@@ -22,7 +22,7 @@ function mkSession(over: Partial<Session> = {}): Session {
   };
 }
 
-const textOf = (r: { content: Array<{ text?: string }> }) => r.content[0]?.text ?? '';
+const textOf = (r: { content: Array<{ type: string; text?: string }> }) => r.content[0]?.text ?? '';
 const fakeManager = (over: Partial<SessionManager>) => over as unknown as SessionManager;
 
 test('definitions: nomes prefixados e schema aberto (session opcional)', () => {

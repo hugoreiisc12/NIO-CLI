@@ -57,7 +57,7 @@ function renderTick(result: TickResult): void {
   }
 }
 
-function makeWatcher(session: Session, autoInstall: boolean): DependencyWatcher {
+function makeWatcher(_session: Session, autoInstall: boolean): DependencyWatcher {
   return new DependencyWatcher({
     repo: createDependencyEventRepository(),
     autoInstall,

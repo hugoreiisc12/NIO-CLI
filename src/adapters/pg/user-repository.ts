@@ -31,9 +31,8 @@ import { query } from './client.js';
  */
 let decoyHashPromise: Promise<string> | null = null;
 function decoyHash(): Promise<string> {
-  return (decoyHashPromise ??= hashPassword(`decoy-${randomBytes(16).toString('hex')}`).then(
-    (h) => h.phc,
-  ));
+  decoyHashPromise ??= hashPassword(`decoy-${randomBytes(16).toString('hex')}`).then((h) => h.phc);
+  return decoyHashPromise;
 }
 
 /** Colunas de `user_cli` visíveis pro role `nio_cli` — **sem** os hashes. */

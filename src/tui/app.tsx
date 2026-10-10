@@ -4,15 +4,12 @@
  * área dinâmica = mensagem em andamento (altura limitada) + input. Evita o estouro
  * de altura que corrompe o Ink.
  */
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Box, Text, Static, useInput, useStdout } from 'ink';
+import type React from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Box, Static } from 'ink';
 import type { Command } from 'commander';
-import { renderMatrixLogo } from '../matrix-logo.js';
-import { tlog } from './debug.js';
-import { theme } from './theme.js';
-import { ICON_ROWS, ThinkingAvatar, avatarFits } from './avatar-view.js';
+import { ThinkingAvatar } from './avatar-view.js';
 import { useIdentity } from './identity-reveal.js';
-import { liveMessageLines, roomForAvatar } from './live-layout.js';
 import {
   Footer,
   MessageView,
@@ -25,58 +22,25 @@ import {
   AttachChips,
   type PaletteAction,
 } from './components.js';
-import { InfoPanel, CommandRunner, PermissionModal } from './palette.js';
-import { QuestionModal } from './question-modal.js';
 import { useTurnTask } from './use-turn-task.js';
-import { summarizeTurn } from './turn-summary.js';
+import { useEngineStream } from './use-engine-stream.js';
+import { useTurnActions } from './use-turn-actions.js';
+import { useTurnWatchers } from './use-turn-watchers.js';
+import { useEngineReplies } from './use-engine-replies.js';
+import { useTerminalSize } from './use-terminal-size.js';
+import { OverlayLayer, type Overlay } from './app-overlays.js';
+import { computeLayout } from './app-layout.js';
+import { useBusyClock, useToastPruning } from './use-ui-clock.js';
+import { AskedQuestion, Splash } from './app-parts.js';
+import { useChatView } from './use-chat-view.js';
+import { useAppRefs } from './use-app-refs.js';
+import { useGlobalKeys } from './use-global-keys.js';
+import { nextMode, runEngineCommand } from './app-commands.js';
 import { buildPalette, type PaletteItem } from './palette-source.js';
 import { createDeltaBuffer } from './delta-buffer.js';
-import {
-  applyEvent,
-  applyDeltas,
-  contextUsage,
-  shouldCompact,
-  pendingQuestion,
-  questionOptions,
-  pushUserMessage,
-  shouldAbortCompaction,
-  toolAttempts,
-  failedTools,
-  syncMessages,
-  reconcilePendingPermissions,
-  reconcilePendingQuestions,
-  replyFailed,
-  replyErrorDetail,
-  emptyChat,
-  type ChatState,
-  permGroupLabel,
-} from './state.js';
-import {
-  listPrimaryAgents,
-  subscribeEvents,
-  fetchPendingPermissions,
-  fetchPendingQuestions,
-  type OpencodeHandle,
-} from './opencode.js';
-import {
-  NIO_AI_CONTEXT,
-  NIO_AI_WARMUP,
-  compactionReserved,
-} from '../lib/clients/client-configs.js';
-import { compactInput } from '../lib/exec/map-reduce.js';
-import { buildAttachedInput, detectPaths } from './attachments.js';
-import { createPasteStore, expandPastes } from './pasted-text.js';
-import { buildHandoffDigest } from './context-recovery.js';
-import { warmPrefixCache, eventSessionId } from './warmup.js';
-import { buildLedger, ledgerTotal, hasWorkInFlight } from './token-ledger.js';
-import { learnTurn, remindLessons, creditLessons } from './learning-wire.js';
-import type { InjectedLesson } from '../app/lesson-outcome.js';
-import type { FilePartInput } from '@opencode-ai/sdk';
-
-type Overlay =
-  | { kind: 'none' }
-  | { kind: 'info'; item: PaletteItem }
-  | { kind: 'run'; item: Extract<PaletteItem, { kind: 'command' }> };
+import { applyDeltas, emptyChat, type ChatState } from './state.js';
+import type { OpencodeHandle } from './opencode.js';
+import { NIO_AI_CONTEXT } from '../lib/clients/client-configs.js';
 
 interface AppProps {
   handle: OpencodeHandle;
@@ -88,21 +52,6 @@ interface AppProps {
   model?: { providerID: string; modelID: string };
 }
 
-/** rows/columns do terminal, reativo ao resize. */
-function useTerminalSize(): { rows: number; columns: number } {
-  const { stdout } = useStdout();
-  const [size, setSize] = useState({ rows: stdout?.rows ?? 24, columns: stdout?.columns ?? 80 });
-  useEffect(() => {
-    if (!stdout) return;
-    const on = () => setSize({ rows: stdout.rows ?? 24, columns: stdout.columns ?? 80 });
-    stdout.on('resize', on);
-    return () => {
-      stdout.off('resize', on);
-    };
-  }, [stdout]);
-  return size;
-}
-
 export function App({
   handle,
   program,
@@ -112,38 +61,25 @@ export function App({
   model,
 }: AppProps): React.ReactElement {
   const { rows, columns } = useTerminalSize();
+  const refs = useAppRefs();
+  const { pastes, sessionId, tuiCommandRef, compactingRef } = refs;
   // Rótulos do modelo (só exibição) — refletem o modelo REAL passado pela TUI;
   // fallback só quando nenhum `model` foi injetado (testes/probe).
   const engineLabel = model ? `${model.providerID}/${model.modelID}` : 'opencode/big-pickle';
   const modelLabel = model ? model.modelID : 'big-pickle';
   const [chat, setChat] = useState<ChatState>(emptyChat);
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' });
-  const pastes = useRef(createPasteStore()); // colagens grandes compactadas no input; expandem no `send`
   const [draft, setDraft] = useState(''); // rascunho do input — no App pra sobreviver a overlays (Sprint 6)
   const [showReasoning, setShowReasoning] = useState(false); // Sprint 3: Ctrl-R expande o raciocínio
   const [modes, setModes] = useState<string[]>(['build', 'plan']); // Sprint 5: agentes primários (Tab cicla)
   const [mode, setMode] = useState('build');
   const [ready, setReady] = useState(false);
-  const [frame, setFrame] = useState(0);
-  const sessionId = useRef<string>('');
-  const abortRef = useRef(new AbortController());
-  const busyStartedAt = useRef<number>(0); // pro tempo decorrido no StatusLine
-  const tuiCommandRef = useRef<(cmd: string) => void>(() => {}); // Sprint 7.2 — closures frescas
-  const userTurnActive = useRef(false); // turno em curso foi pedido pelo usuário? (senão = compactação/emenda → aborta)
   // O loop de eventos vive num closure criado na montagem: sem este ref ele leria um
   // `chat` velho pra sempre. Atualizado a cada render.
   const chatRef = useRef(chat);
   chatRef.current = chat;
-  // Lições injetadas no prompt atual + quantas tentativas já existiam quando ele saiu:
-  // o crédito só olha o que aconteceu DEPOIS da injeção.
-  const injectedLessons = useRef<InjectedLesson[]>([]);
-  const attemptsAtSend = useRef(0);
-  /** Chars do prompt em voo — vira o `pending` do livro-caixa. 0 = nada pendente. */
-  const inFlightChars = useRef(0);
-  const warmupSessionId = useRef(''); // sessão descartável do aquecimento — eventos dela são ignorados
   // Deltas de token coalescidos: fluidez do stream sem um redraw do Ink por token.
   const deltas = useRef(createDeltaBuffer((batch) => setChat((prev) => applyDeltas(prev, batch))));
-  const compactingRef = useRef(false); // Frente 5 — já disparou a compactação proativa? (evita duplicar)
 
   const [splash, setSplash] = useState(splashMs > 0);
   // Trilha do turno em `tasks` (kind=chat): mesma persistência do worker.
@@ -151,194 +87,32 @@ export function App({
   const turnTask = useTurnTask({ session });
   const identity = useIdentity(rows, columns); // "Quem é você?" → cena local, não vai pro modelo
 
-  // Monitora intensidade (tokens/s) — se dispara threshold, dispara delegação (Fase 3).
-  const intensityMetricsRef = useRef({ startTime: 0, tokensSoFar: 0 });
-  const recordTokens = React.useCallback((delta: number) => {
-    if (intensityMetricsRef.current.startTime === 0) {
-      intensityMetricsRef.current.startTime = Date.now();
-    }
-    intensityMetricsRef.current.tokensSoFar += delta;
-  }, []);
-  const shouldDelegate = React.useCallback(() => {
-    const elapsed = (Date.now() - intensityMetricsRef.current.startTime) / 1000;
-    if (elapsed < 1) return false;
-    const tokensPerSec = intensityMetricsRef.current.tokensSoFar / elapsed;
-    return tokensPerSec > 500; // INTENSITY_THRESHOLD_TOKENS_PER_SEC
-  }, []);
-
   useEffect(() => {
     if (splashMs <= 0) return;
     const t = setTimeout(() => setSplash(false), splashMs);
     return () => clearTimeout(t);
   }, [splashMs]);
 
-  // spinner — marca o início do processamento (pro tempo decorrido) e tica o frame
   const awaitingPermission = chat.permissions.length > 0;
-  useEffect(() => {
-    if (chat.busy) busyStartedAt.current = Date.now();
-  }, [chat.busy]);
-  useEffect(() => {
-    if (!chat.busy) return;
-    // Modal aberto: sem tick. Cada tick redesenha o Ink inteiro e, com o modal por cima
-    // do live, o frame passa das linhas do terminal e o bloco do bash pisca/some.
-    if (awaitingPermission) return;
-    const t = setInterval(() => setFrame((f) => f + 1), 90);
-    return () => clearInterval(t);
-  }, [chat.busy, awaitingPermission]);
+  const { frame, busyStartedAt } = useBusyClock(chat.busy, awaitingPermission);
 
-  /** Re-sincroniza com o server (fonte da verdade): status + mensagens. */
-  /**
-   * Ids já respondidos, aguardando o servidor refletir. Sem isto o `resync` logo
-   * depois da resposta relista o pedido e o modal ressuscita — o usuário responde
-   * de novo e cai no mesmo ciclo, sem saída. Separados por domínio para não
-   * depender de ids de permissão e de pergunta nunca coincidirem.
-   */
-  const settledPerms = React.useRef<Set<string>>(new Set());
-  const settledQuestions = React.useRef<Set<string>>(new Set());
-
-  const resync = React.useCallback(async () => {
-    const id = sessionId.current;
-    if (!id) return;
-    const snapshotAt = Date.now(); // antes dos fetches: SSE posterior a isto não é apagado
-    try {
-      const [st, msgs, perms, ques] = await Promise.all([
-        handle.client.session.status(),
-        handle.client.session.messages({ path: { id } }),
-        fetchPendingPermissions(handle.url),
-        fetchPendingQuestions(handle.url),
-      ]);
-      const status = (st as { data?: Record<string, { type?: string }> }).data?.[id]?.type;
-      const busy = status === 'busy' || status === 'retry';
-      const raw = ((msgs as { data?: unknown[] }).data ?? []) as Parameters<typeof syncMessages>[1];
-      setChat((prev) =>
-        reconcilePendingQuestions(
-          reconcilePendingPermissions(
-            syncMessages(prev, raw, busy),
-            perms,
-            settledPerms.current,
-            snapshotAt,
-          ),
-          ques,
-          settledQuestions.current,
-          snapshotAt,
-        ),
-      );
-    } catch (err) {
-      tlog('resync falhou', (err as Error).message);
-    }
-  }, [handle]);
-
-  // sessão + stream de eventos (reconecta pra sempre)
-  useEffect(() => {
-    if (splash) return;
-    let alive = true;
-    const ac = abortRef.current;
-    (async () => {
-      try {
-        const created = await handle.client.session.create({
-          body: { title: cwd.split('/').pop() ?? 'nio' },
-        });
-        sessionId.current = (created as { data?: { id?: string } }).data?.id ?? '';
-        const agents = await listPrimaryAgents(handle.client);
-        setModes(agents);
-        setMode((cur) => (agents.includes(cur) ? cur : (agents[0] ?? 'build')));
-      } catch (err) {
-        tlog('falha ao criar sessão', (err as Error).message);
-      }
-      setReady(true);
-      // Aquece o prefixo ENQUANTO a pessoa digita: paga o prefill de ~21k tokens numa
-      // sessão descartável pra a 1ª request real cair no cache (medido: 31s → ~1,6s).
-      if (model && NIO_AI_WARMUP) {
-        void warmPrefixCache({
-          client: handle.client,
-          model,
-          agent: mode,
-          onSession: (id) => {
-            warmupSessionId.current = id;
-          },
-        }).then((ok) => tlog('aquecimento', ok ? 'ok' : 'falhou'));
-      }
-      for await (const evt of subscribeEvents(handle.client, ac.signal)) {
-        if (!alive) break;
-        if (evt === null) {
-          void resync(); // (re)conectou → re-sincroniza
-          continue;
-        }
-        const et = evt.type as string;
-        if (et === 'message.part.delta') {
-          // Antes: descartado, e o texto andava só nos 7 snapshots da resposta. O
-          // buffer dá a fluidez de token sem pagar um redraw do Ink por delta.
-          const d = (evt as { properties?: Record<string, unknown> }).properties ?? {};
-          if (warmupSessionId.current && eventSessionId(d) === warmupSessionId.current) continue;
-          deltas.current.push({
-            messageID: String(d.messageID ?? ''),
-            partID: String(d.partID ?? ''),
-            field: String(d.field ?? ''),
-            delta: String(d.delta ?? ''),
-          });
-          continue;
-        }
-        // Qualquer outro evento pode mudar o mesmo part que os deltas estão montando:
-        // esvazia antes, pra o snapshot reconciliar em cima do texto já aplicado.
-        deltas.current.flushNow();
-        // Sprint — "respondeu = parou": o turno do usuário fecha no idle; se o motor
-        // emenda OUTRO turno (compactação/continuação) sem prompt novo, encerra e fica idle.
-        const props = (evt as { properties?: Record<string, unknown> }).properties ?? {};
-        // O aquecimento roda numa sessão própria; `applyEvent` não filtra por sessão,
-        // então sem isto a resposta descartável dele apareceria no chat do usuário.
-        if (warmupSessionId.current && eventSessionId(props) === warmupSessionId.current) continue;
-        const stType = (props.status as { type?: string } | undefined)?.type;
-        if (et === 'session.idle' || (et === 'session.status' && stType === 'idle')) {
-          userTurnActive.current = false;
-          // Turno fechado: o que errou e depois acertou vira lição. Assíncrono e
-          // silencioso — aprender não pode atrasar nem derrubar a interface.
-          void learnTurn(chatRef.current.messages, session?.profile);
-          turnTask.end(summarizeTurn(chatRef.current.messages));
-          // Credita as lições do prompt que acabou de fechar, olhando só o que veio
-          // depois dele — e zera, pra não creditar duas vezes no próximo idle.
-          if (injectedLessons.current.length > 0) {
-            const novas = toolAttempts(chatRef.current.messages).slice(attemptsAtSend.current);
-            void creditLessons(injectedLessons.current, novas);
-            injectedLessons.current = [];
-          }
-        }
-        const info = (props.info ?? props) as { mode?: string };
-        // emenda não-solicitada = compactação/resumo que o motor dispara sozinho após
-        // a resposta (o modelo não inicia turno novo por conta própria fora disso).
-        if (
-          et === 'message.updated' &&
-          info.mode === 'compaction' &&
-          shouldAbortCompaction({
-            userTurnActive: userTurnActive.current,
-            requestedByTui: compactingRef.current,
-            workInFlight: inFlightChars.current > 0,
-          })
-        ) {
-          if (sessionId.current)
-            handle.client.session.abort({ path: { id: sessionId.current } }).catch(() => {});
-          setChat((prev) => ({ ...prev, busy: false }));
-          continue;
-        }
-        // Sprint 7.2 — o motor dirige a TUI (imperativo, fora do ChatState):
-        if (et === 'tui.prompt.append') {
-          const text = (evt as { properties?: { text?: string } }).properties?.text ?? '';
-          if (text) setDraft((d) => (d ? `${d} ${text}` : text));
-          continue;
-        }
-        if (et === 'tui.command.execute') {
-          const cmd = (evt as { properties?: { command?: string } }).properties?.command ?? '';
-          tuiCommandRef.current(cmd);
-          continue;
-        }
-        setChat((prev) => applyEvent(prev, evt));
-      }
-    })();
-    return () => {
-      alive = false;
-      ac.abort();
-      deltas.current.stop();
-    };
-  }, [splash, handle, cwd, resync]);
+  const { resync } = useEngineStream({
+    handle,
+    refs,
+    cwd,
+    splash,
+    model,
+    mode,
+    session,
+    chatRef,
+    setChat,
+    setModes,
+    setMode,
+    setReady,
+    deltas,
+    turnTask,
+    setDraft,
+  });
 
   // rede de segurança: se ficar `busy` sem eventos, confere o status no server
   useEffect(() => {
@@ -347,216 +121,18 @@ export function App({
     return () => clearInterval(t);
   }, [chat.busy, resync]);
 
-  // Sprint 7.2 — poda toasts expirados (`until`).
-  useEffect(() => {
-    if (chat.toasts.length === 0) return;
-    const iv = setInterval(() => {
-      setChat((prev) => {
-        const now = Date.now();
-        const kept = prev.toasts.filter((x) => x.until > now);
-        return kept.length === prev.toasts.length ? prev : { ...prev, toasts: kept };
-      });
-    }, 700);
-    return () => clearInterval(iv);
-  }, [chat.toasts.length]);
+  useToastPruning(chat.toasts.length, setChat);
 
-  // Atalhos globais — inativos quando há overlay/permissão por cima (o Esc é deles).
-  useInput(
-    (input, key) => {
-      if (key.ctrl && input === 'r') return setShowReasoning((v) => !v); // Sprint 3
-      if (key.escape && chat.busy && sessionId.current) {
-        handle.client.session.abort({ path: { id: sessionId.current } }).catch(() => {});
-        setChat((prev) => ({ ...prev, busy: false }));
-      }
-    },
-    {
-      isActive:
-        overlay.kind === 'none' && chat.permissions.length === 0 && chat.questions.length === 0,
-    },
-  );
+  useGlobalKeys({
+    chat,
+    overlayUp: overlay.kind !== 'none',
+    handle,
+    sessionId,
+    setChat,
+    setShowReasoning,
+  });
 
   useEffect(() => () => handle.close(), [handle]);
-
-  const send = async (text: string) => {
-    if (!sessionId.current) return;
-    setDraft('');
-    if (identity.tryStart(text)) return;
-    const pasted = pastes.current.take(); // tokens `[Pasted text #n]` do rascunho → conteúdo real
-    userTurnActive.current = true; // este turno foi pedido pelo usuário → não abortar
-    setChat((prev) => pushUserMessage(prev, text)); // eco mostra o texto ORIGINAL
-    turnTask.begin(text); // registra o turno com o texto do usuário, não o enriquecido
-    // Anexos: embute o conteúdo dos arquivos (csv/txt/xlsx) no texto e coleta parts de
-    // imagem (Item 4b). Falha → segue com o texto cru.
-    let enriched = text;
-    let fileParts: FilePartInput[] = [];
-    try {
-      const built = await buildAttachedInput(text);
-      enriched = built.text;
-      fileParts = built.fileParts;
-    } catch (err) {
-      tlog('buildAttachedInput falhou, texto cru', (err as Error).message);
-    }
-    // Lição das tools que já falharam NESTA sessão — o filtro por tool é o que impede
-    // a lição de uma ferramenta de contaminar outra (similaridade sozinha não separa).
-    try {
-      attemptsAtSend.current = toolAttempts(chat.messages).length;
-      const pista = await remindLessons(failedTools(chat.messages), text);
-      injectedLessons.current = pista.injected;
-      if (pista.text)
-        enriched = `${pista.text}
-
-${enriched}`;
-    } catch (err) {
-      tlog('recall de lições falhou', (err as Error).message);
-    }
-    // Map-reduce: input grande é compactado (lossy) antes de enviar; erro → manda cru.
-    // As colagens voltam só aqui: o eco, o registro do turno e a busca de anexos/lições
-    // acima trabalham com o token curto, não com o texto colado.
-    enriched = expandPastes(enriched, pasted);
-    let payload = enriched;
-    try {
-      payload = await compactInput(enriched, {
-        onProgress: (n) => toast(`compactando input · ${n} trecho(s)`),
-      });
-    } catch (err) {
-      tlog('compactInput falhou, enviando cru', (err as Error).message);
-    }
-    // Sem o antigo sufixo `/no_think` (poluía o contexto). O reasoning do Qwen não é
-    // suprimível via config do opencode (ver client-configs) — a Camada B não o mostra no output.
-    inFlightChars.current = payload.length; // em voo até a resposta (ou o erro) voltar
-    handle.client.session
-      .prompt({
-        path: { id: sessionId.current },
-        body: { model, agent: mode, parts: [...fileParts, { type: 'text', text: payload }] },
-      })
-      .catch((err) => tlog('prompt falhou', (err as Error).message))
-      .finally(() => {
-        inFlightChars.current = 0;
-      }); // voltou (ou falhou): nada pendente
-  };
-
-  /**
-   * Janela estourada: cria uma sessão nova e semeia com um resumo montado LOCALMENTE.
-   *
-   * Não dá pra usar o `session.summarize` aqui — é ele que estoura, porque reenvia o
-   * histórico inteiro pro modelo resumir. Era isso que deixava a sessão morta: a
-   * recuperação falhava pelo mesmo motivo do erro original, em toda request seguinte.
-   */
-  const recoverFromOverflow = async () => {
-    const digest = buildHandoffDigest(chat.messages);
-    try {
-      const created = await handle.client.session.create({
-        body: { title: `${cwd.split('/').pop() ?? 'nio'} (cont.)` },
-      });
-      const novaId = (created as { data?: { id?: string } }).data?.id ?? '';
-      if (!novaId) throw new Error('sessão nova sem id');
-      sessionId.current = novaId;
-      setChat((prev) => ({ ...prev, error: null, busy: false }));
-      toast('janela zerada — sessão nova com o resumo da anterior');
-      if (digest) {
-        await handle.client.session.prompt({
-          path: { id: novaId },
-          body: { model, agent: mode, parts: [{ type: 'text', text: digest }] },
-        });
-      }
-    } catch (err) {
-      tlog('recuperação do overflow falhou', (err as Error).message);
-      toast('não consegui zerar a janela — saia e entre de novo', 'warning');
-    }
-  };
-
-  /**
-   * Delegação de request intensa ao worker: persistir checkpoint, parar execução local
-   * e deixar o worker retomar duramente. Sem criar sessão nova (sessão já existe e
-   * será re-attached pelo worker).
-   */
-  const delegateToWorker = async () => {
-    const taskId = turnTask.currentTaskId();
-    if (!taskId || !sessionId.current) return;
-    try {
-      // Persiste ANTES de parar o motor local: se a delegação falhar, a TUI
-      // segue executando em vez de deixar o turno sem dono.
-      if (!(await turnTask.delegate(sessionId.current))) {
-        toast('não consegui delegar pro background — seguindo local', 'warning');
-        return;
-      }
-      setChat((prev) => ({ ...prev, busy: false }));
-      toast(
-        `delegando pro background… rodando via nio-worker\n\nAcompanhe com:\nnio task show ${taskId.slice(0, 8)}`,
-      );
-      await handle.client.session.abort({ path: { id: sessionId.current } }).catch(() => {});
-    } catch (err) {
-      tlog('delegação falhou', (err as Error).message);
-      toast('não consegui delegar pro background — tente de novo', 'warning');
-    }
-  };
-
-  /**
-   * Resposta cortada: envia automaticamente um prompt de continuação MESMA SESSÃO.
-   * Não precisa de sessão nova — o problema é UMA geração passando do teto de output,
-   * não o histórico inteiro. Recuperação transparente: o usuário não vê.
-   */
-  const continueFromOutputLength = async () => {
-    const promptContinuar =
-      'Sua resposta anterior foi cortada por exceder o teto de tokens de saída. ' +
-      'Continue EXATAMENTE de onde parou, sem repetir o que já foi dito.';
-    try {
-      setChat((prev) => ({ ...prev, error: null, busy: false }));
-      toast('continuando a resposta cortada…');
-      await handle.client.session.prompt({
-        path: { id: sessionId.current },
-        body: { model, agent: mode, parts: [{ type: 'text', text: promptContinuar }] },
-      });
-    } catch (err) {
-      tlog('recuperação de output length falhou', (err as Error).message);
-      toast('não consegui continuar a resposta — tente de novo', 'warning');
-    }
-  };
-
-  // Recupera sozinho: deixar o usuário reenviar só repetiria o mesmo erro.
-  useEffect(() => {
-    if (chat.error?.name === 'ContextOverflowError') void recoverFromOverflow();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.error?.name]);
-
-  // Continua automaticamente de resposta cortada (output length).
-  useEffect(() => {
-    if (chat.error?.name === 'MessageOutputLengthError') void continueFromOutputLength();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.error?.name]);
-
-  // Rastreia tokens de mensagens completadas — usado para detectar intensidade.
-  useEffect(() => {
-    if (!chat.busy && chat.messages.length > 0) {
-      const ultima = chat.messages[chat.messages.length - 1];
-      if (ultima?.role === 'assistant') {
-        for (const parte of ultima.parts) {
-          if (parte.kind === 'step' && parte.step?.tokensOut) {
-            recordTokens(parte.step.tokensOut);
-          }
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.messages.length, chat.busy]);
-
-  // Monitora intensidade — se passou do threshold, delega pro worker.
-  useEffect(() => {
-    if (chat.busy && shouldDelegate()) {
-      void delegateToWorker();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.busy, chat.messages.length]);
-
-  // Sprint 5: Tab cicla o modo do agente (build ⇄ plan ⇄ …).
-  const cycleMode = (reverse: boolean) => {
-    setMode((cur) => {
-      const n = modes.length;
-      if (n === 0) return cur;
-      const i = Math.max(0, modes.indexOf(cur));
-      return modes[(i + (reverse ? -1 : 1) + n) % n] ?? cur;
-    });
-  };
 
   // Sprint 7.2 — mapeia `tui.command.execute` do motor. Guardado num ref
   // (atualizado a cada render) pra o loop de eventos ver closures frescas.
@@ -569,52 +145,44 @@ ${enriched}`;
       ],
     }));
 
-  // Frente 5 — compactação proativa: quando o turno acaba (idle) e o contexto já
-  // cruzou o teto menos a folga, dispara `session.summarize` AGORA (ocioso, o
-  // usuário está lendo) — o próximo prompt não paga a compactação inline (a trava
-  // de "demora pra continuar após estourar"). Mesma sessão, contexto vira resumo.
-  useEffect(() => {
-    if (chat.busy || !sessionId.current) return;
-    // Livro-caixa: conta a partir do ÚLTIMO RESUMO, não do início da sessão. Somar o
-    // histórico inteiro faria o orçamento parecer estourado logo após compactar.
-    const ledger = buildLedger(chat.messages, inFlightChars.current);
-    if (hasWorkInFlight(ledger)) return; // há request em voo: não mexer na sessão
-    if (!shouldCompact(ledgerTotal(ledger), NIO_AI_CONTEXT, compactionReserved())) {
-      compactingRef.current = false; // abaixo do teto (pós-compactação) → re-arma
-      return;
-    }
-    if (compactingRef.current) return; // já disparou; aguardando o motor compactar
-    compactingRef.current = true;
-    handle.client.session.summarize({ path: { id: sessionId.current } }).catch(() => {
-      compactingRef.current = false; // falhou → re-arma pra tentar de novo
-    });
-    toast('compactando o contexto proativamente…');
-  }, [chat.busy, chat.messages, handle]);
+  const { send, recoverFromOverflow, delegateToWorker, continueFromOutputLength } = useTurnActions({
+    handle,
+    refs,
+    cwd,
+    model,
+    mode,
+    chat,
+    identity,
+    setChat,
+    setDraft,
+    turnTask,
+    toast,
+  });
 
-  tuiCommandRef.current = (cmd: string) => {
-    switch (cmd) {
-      case 'prompt.clear':
-        return setDraft('');
-      case 'prompt.submit':
-        return send(draft);
-      case 'agent.cycle':
-        return cycleMode(false);
-      case 'session.interrupt':
-        if (sessionId.current)
-          handle.client.session.abort({ path: { id: sessionId.current } }).catch(() => {});
-        return setChat((prev) => ({ ...prev, busy: false }));
-      case 'session.compact':
-        if (sessionId.current) {
-          compactingRef.current = true; // fomos nós: o guard abaixo não pode matar
-          handle.client.session.summarize({ path: { id: sessionId.current } }).catch(() => {
-            compactingRef.current = false;
-          });
-        }
-        return toast('compactando o contexto…');
-      default:
-        return toast(`comando do motor ignorado: ${cmd}`);
-    }
-  };
+  useTurnWatchers({
+    chat,
+    handle,
+    refs,
+    toast,
+    recoverFromOverflow,
+    continueFromOutputLength,
+    delegateToWorker,
+  });
+
+  const cycleMode = (reverse: boolean) => setMode((cur) => nextMode(modes, cur, reverse));
+
+  tuiCommandRef.current = (cmd) =>
+    runEngineCommand(cmd, {
+      handle,
+      sessionId,
+      compactingRef,
+      setChat,
+      setDraft,
+      draft,
+      send,
+      cycleMode,
+      toast,
+    });
 
   const palette = useMemo(() => buildPalette(program), [program]);
   const onDispatch = (item: PaletteItem, action: PaletteAction) => {
@@ -625,137 +193,34 @@ ${enriched}`;
   };
   const closeOverlay = () => setOverlay({ kind: 'none' });
 
-  // Sprint 7.1: responde o 1º da FILA e faz shift — os outros N-1 do batch
-  // paralelo aparecem em sequência (antes: só 1 slot, o resto ficava órfão e
-  // o opencode travava em `busy`).
-  const respondPermission = (r: 'once' | 'always' | 'reject') => {
-    const perm = chat.permissions[0];
-    if (!perm) return;
-    settledPerms.current.add(perm.id);
-    setChat((prev) => ({ ...prev, permissions: prev.permissions.slice(1) }));
-    /** Não respondeu de fato: solta o tombstone para o pedido voltar e ser refeito. */
-    const desfazer = (motivo: string, detalhe: string): void => {
-      settledPerms.current.delete(perm.id);
-      tlog('permission respond', motivo, detalhe);
-    };
-    handle.client
-      .postSessionIdPermissionsPermissionId({
-        path: { id: perm.sessionId, permissionID: perm.id },
-        body: { response: r },
-      })
-      .then((res) => {
-        // O client do opencode só lança em erro de rede — um 4xx chega aqui numa
-        // promessa cumprida, como `{ error }`. Sem esta checagem o tombstone
-        // ficaria preso: o modal sumiria sem decisão e o motor esperaria para sempre.
-        if (replyFailed(res)) desfazer('recusado', replyErrorDetail(res));
-      })
-      .catch((err) => desfazer('falhou', (err as Error).message))
-      .finally(() => {
-        void resync();
-      });
-  };
+  const { respondPermission, settleQuestion } = useEngineReplies({
+    chat,
+    handle,
+    refs,
+    setChat,
+    resync,
+  });
 
-  // Tool `question` — responde/rejeita via REST (`/session/:id/question/:id/reply|reject`,
-  // o SDK não tipa) e faz shift na fila. Sem isto o turno trava em `running`.
-  const settleQuestion = (path: 'reply' | 'reject', answers?: string[][]) => {
-    const q = chat.questions[0];
-    if (!q) return;
-    settledQuestions.current.add(q.id);
-    setChat((prev) => ({ ...prev, questions: prev.questions.slice(1) }));
-    /** Não respondeu de fato: solta o tombstone para a pergunta voltar e ser refeita. */
-    const desfazer = (motivo: string, detalhe: string): void => {
-      settledQuestions.current.delete(q.id);
-      tlog('question respond', motivo, detalhe);
-    };
-    fetch(new URL(`/session/${q.sessionId}/question/${q.id}/${path}`, handle.url), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: answers ? JSON.stringify({ answers }) : undefined,
-    })
-      .then(async (res) => {
-        // `fetch` só rejeita em erro de rede — um 4xx chegaria aqui como sucesso,
-        // a pergunta voltaria no resync e não haveria uma linha sobre o motivo.
-        if (replyFailed(res))
-          desfazer(
-            `recusado ${(res as Response).status}`,
-            (await res.text().catch(() => '')).slice(0, 200),
-          );
-      })
-      .catch((err) => desfazer('falhou', (err as Error).message))
-      .finally(() => void resync());
-  };
-
-  // histórico (Static) vs. a última mensagem se estiver streamando
-  const { finished, live } = useMemo(() => {
-    const msgs = chat.messages;
-    const lastIsLive = chat.busy && msgs.length > 0 && msgs[msgs.length - 1]!.role === 'assistant';
-    return {
-      finished: lastIsLive ? msgs.slice(0, -1) : msgs,
-      live: lastIsLive ? msgs[msgs.length - 1]! : null,
-    };
-  }, [chat.messages, chat.busy]);
-
-  // fase atual (reflete o que o opencode está fazendo) — mostrada no StatusLine
-  const phase = useMemo(() => {
-    if (chat.retry) return `tentando de novo (${chat.retry.attempt})`;
-    // O motor deixa o tool `running` enquanto espera o humano: sem isto o status mente.
-    const waiting = chat.permissions[0];
-    if (waiting) return `aguardando autorização · ${permGroupLabel(waiting.kind)}`;
-    const parts = live?.parts ?? [];
-    const tool = parts.find(
-      (p) => p.kind === 'tool' && (p.tool?.status === 'running' || p.tool?.status === 'pending'),
-    );
-    if (tool) return `executando ${tool.tool?.name ?? tool.text}`;
-    const hasText = parts.some((p) => p.kind === 'text' && p.text.trim());
-    const hasReasoning = parts.some((p) => p.kind === 'reasoning' && p.text.trim());
-    if (hasText) return 'escrevendo';
-    if (hasReasoning) return 'raciocinando';
-    return 'pensando';
-  }, [live, chat.retry, chat.permissions]);
-  // tempo decorrido (o frame do spinner força o re-render ~11×/s enquanto busy)
-  const elapsed = chat.busy
-    ? Math.max(0, Math.floor((Date.now() - busyStartedAt.current) / 1000))
-    : 0;
-  // Sprint 7.4/7.6 — o nio terminou com uma pergunta (e às vezes opções)
-  const question = useMemo(() => pendingQuestion(chat), [chat]);
-  const options = useMemo(() => questionOptions(chat), [chat]);
-  // uso da janela de contexto do último turno (input de pico + output gerado), pra
-  // o rodapé medir o gasto contra a janela do provider. Só muda no `step-finish`;
-  // recalcular a cada frame do spinner era desperdício (o tick não muda as mensagens).
-  const usage = useMemo(() => contextUsage(chat.messages), [chat.messages]);
-  // Item 4 — arquivos detectados no rascunho (chips acima do input). fs-based, mas
-  // barato e memoizado no draft (só alguns tokens por vez).
-  const attachLabels = useMemo(
-    () => detectPaths(draft).map((d) => `${d.path.split(/[\\/]/).pop() ?? d.path} [${d.kind}]`),
-    [draft],
+  const { finished, live, phase, elapsed, question, options, usage, attachLabels } = useChatView(
+    chat,
+    draft,
+    busyStartedAt,
   );
 
-  if (splash) {
-    return (
-      <Box flexDirection="column" alignItems="center" paddingY={1}>
-        <Text>{renderMatrixLogo({ width: Math.min(70, columns), height: 16 })}</Text>
-        <Text color={theme.accent}>operador NIO · {engineLabel}</Text>
-      </Box>
-    );
-  }
+  if (splash) return <Splash columns={columns} engineLabel={engineLabel} />;
 
   const disabled = chat.busy || !ready || identity.active;
   const pendingPerm = chat.permissions[0] ?? null;
   const pendingQ = !pendingPerm ? (chat.questions[0] ?? null) : null; // permissão tem prioridade
   const overlayUp = overlay.kind !== 'none' || !!pendingPerm || !!pendingQ;
   const paletteOpen = draft.startsWith('/') && !overlayUp;
-  // teto da área viva — encolhe quando a droplist `/` abre, pro total (live +
-  // status + input + droplist + rodapé) caber e não corromper o Ink.
-  const paletteMaxItems = Math.max(3, Math.min(6, rows - 16));
-  const liveCap = Math.max(3, Math.floor(rows * 0.45) - (paletteOpen ? paletteMaxItems + 3 : 0));
-  // O personagem cede, o conteúdo não: ele acompanha o turno enquanto a resposta
-  // ainda couber SEM as linhas dele, e sai de cena quando o texto precisa da tela.
-  const avatarUp =
-    chat.busy &&
-    !overlayUp &&
-    avatarFits(rows) &&
-    roomForAvatar(live ? liveMessageLines(live) : 1, liveCap, ICON_ROWS);
-  const liveMax = avatarUp ? Math.max(3, liveCap - ICON_ROWS) : liveCap;
+  const { paletteMaxItems, avatarUp, liveMax } = computeLayout({
+    rows,
+    busy: chat.busy,
+    overlayUp,
+    paletteOpen,
+    live,
+  });
   const inputActive = !overlayUp;
 
   // layout tipo Claude Code (Sprint 4): fluxo vertical, sem sidebar, rodapé de 1–2 linhas.
@@ -781,17 +246,7 @@ ${enriched}`;
       {chat.error && <ErrorBlock error={chat.error} />}
       <Toasts toasts={chat.toasts} />
 
-      {/* Sprint 7.4 — o nio te perguntou algo e está esperando */}
-      {question && !overlayUp && (
-        <Box paddingX={1}>
-          <Text color={theme.accentBright} wrap="truncate-end">
-            {'↳ o nio perguntou: '}
-            <Text color={theme.text}>
-              {question.length > columns - 24 ? question.slice(0, columns - 27) + '…' : question}
-            </Text>
-          </Text>
-        </Box>
-      )}
+      {question && !overlayUp && <AskedQuestion question={question} columns={columns} />}
 
       {/* Item 4 — chips dos arquivos detectados no rascunho, acima do input. */}
       {!overlayUp && <AttachChips files={attachLabels} />}
@@ -813,25 +268,17 @@ ${enriched}`;
       />
 
       {/* camada por cima do input — não substitui, só sobrepõe. */}
-      {pendingPerm ? (
-        <PermissionModal
-          req={pendingPerm}
-          queued={chat.permissions.length}
-          onRespond={respondPermission}
-        />
-      ) : pendingQ ? (
-        <QuestionModal
-          key={pendingQ.id}
-          req={pendingQ}
-          queued={chat.questions.length}
-          onAnswer={(answers) => settleQuestion('reply', answers)}
-          onReject={() => settleQuestion('reject')}
-        />
-      ) : overlay.kind === 'info' ? (
-        <InfoPanel item={overlay.item} onClose={closeOverlay} />
-      ) : overlay.kind === 'run' ? (
-        <CommandRunner item={overlay.item} cwd={cwd} onClose={closeOverlay} />
-      ) : null}
+      <OverlayLayer
+        pendingPerm={pendingPerm}
+        pendingQ={pendingQ}
+        queuedPerms={chat.permissions.length}
+        queuedQuestions={chat.questions.length}
+        overlay={overlay}
+        cwd={cwd}
+        onRespondPermission={respondPermission}
+        onSettleQuestion={settleQuestion}
+        onClose={closeOverlay}
+      />
 
       <Footer
         model={modelLabel}

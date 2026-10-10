@@ -55,11 +55,11 @@ dbTest('reopen devolve o step à fila — a task retoma depois da aprovação', 
   const repo = createStepRepository();
   try {
     const [a] = await repo.insertAll(taskId, [{ stepNumber: 10, name: 'a' }]);
-    await repo.start(a!.id);
+    await repo.start(a!.id, 0);
     // Em `running`, o step some da fila — é isso que prendia a task para sempre.
     expect(await repo.nextPending(taskId)).toBeNull();
 
-    await repo.reopen(a!.id);
+    await repo.reopen(a!.id, 0);
     const retomado = await repo.nextPending(taskId);
     expect(retomado?.id).toBe(a!.id);
     expect(retomado?.attempt).toBe(1); // reabrir não gasta tentativa
@@ -78,13 +78,13 @@ dbTest('reopen não ressuscita step concluído nem falhado', async () => {
       { stepNumber: 10, name: 'feito' },
       { stepNumber: 20, name: 'falho' },
     ]);
-    await repo.start(criados[0]!.id);
-    await repo.finish(criados[0]!.id, { output: { text: 'ok' } });
-    await repo.start(criados[1]!.id);
-    await repo.failStep(criados[1]!.id, 'erro');
+    await repo.start(criados[0]!.id, 0);
+    await repo.finish(criados[0]!.id, 0, { output: { text: 'ok' } });
+    await repo.start(criados[1]!.id, 0);
+    await repo.failStep(criados[1]!.id, 0, 'erro');
 
-    await repo.reopen(criados[0]!.id);
-    await repo.reopen(criados[1]!.id);
+    await repo.reopen(criados[0]!.id, 0);
+    await repo.reopen(criados[1]!.id, 0);
 
     // A guarda `WHERE status = 'running'` é o que impede reexecutar trabalho pronto.
     const todos = await repo.listByTask(taskId);
@@ -101,8 +101,8 @@ dbTest('retry acrescenta tentativa em vez de sobrescrever o histórico', async (
   const repo = createStepRepository();
   try {
     const [a] = await repo.insertAll(taskId, [{ stepNumber: 10, name: 'a' }]);
-    await repo.start(a!.id);
-    await repo.failStep(a!.id, "Cannot find table 'X'");
+    await repo.start(a!.id, 0);
+    await repo.failStep(a!.id, 0, "Cannot find table 'X'");
     const nova = await repo.retry(a!.id);
 
     expect(nova.attempt).toBe(2);
@@ -110,6 +110,24 @@ dbTest('retry acrescenta tentativa em vez de sobrescrever o histórico', async (
     expect(todos).toHaveLength(2);
     // A tentativa que falhou continua legível — é dela que sai a lição.
     expect(todos[0]!.error).toContain('Cannot find table');
+  } finally {
+    await limpar();
+  }
+});
+
+dbTest('fence velho não grava no step — o zumbi não sobrescreve o worker novo', async () => {
+  if (!temTabela) return;
+  const { taskId, limpar } = await semear();
+  const repo = createStepRepository();
+  try {
+    const [a] = await repo.insertAll(taskId, [{ stepNumber: 10, name: 'a' }]);
+    expect(await repo.start(a!.id, 0)).toBe(true);
+    await query('UPDATE tasks SET fence = fence + 1 WHERE id = $1', [taskId]); // outro worker reivindicou
+
+    expect(await repo.finish(a!.id, 0, { output: { text: 'zumbi' } })).toBe(false);
+    expect(await repo.failStep(a!.id, 0, 'zumbi')).toBe(false);
+    expect(await repo.reopen(a!.id, 0)).toBe(false);
+    expect((await repo.listByTask(taskId))[0]!.status).toBe('running');
   } finally {
     await limpar();
   }

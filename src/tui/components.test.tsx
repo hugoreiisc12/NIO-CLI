@@ -1,5 +1,4 @@
 import { test, expect } from 'bun:test';
-import React from 'react';
 import { render } from 'ink-testing-library';
 import { frameOf } from './test-utils.js';
 import { Footer, MessageView, LiveMessage, InputBox } from './components.js';
@@ -115,7 +114,7 @@ test('InputBox: `/…` mostra UMA lista inline; sem `/` não mostra lista', asyn
 
 test('InputBox: Enter num comando dispara ação "run" (Sprint 6)', async () => {
   const palette = buildPalette(buildProgram());
-  let got: { name: string; action: string } | null = null;
+  let got = null as { name: string; action: string } | null;
   const { stdin } = render(
     <InputBox
       value="/whoami"

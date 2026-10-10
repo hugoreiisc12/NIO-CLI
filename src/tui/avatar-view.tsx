@@ -3,7 +3,8 @@
  * sem alterá-lo e desenha com meio-bloco (▀ ▄): cada caractere carrega 2 pixels
  * na vertical, então o sprite de 28 linhas vira 14 (medium) ou 7 (icon).
  */
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import chalk from 'chalk';
 import { envName } from '../brand.js';

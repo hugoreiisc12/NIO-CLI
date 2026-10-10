@@ -3,8 +3,9 @@
  * (`jti = auth_session.id`). Consome os repos + `OtpSender`, sem saber de HTTP.
  * Ver `docs/specs/auth/0004-login-2fa-sms-otp.md` e ADR 0006.
  */
+
 import jwt from 'jsonwebtoken';
-import type { UserCli, LoginChallenge } from '../../core/types.js';
+import type { UserCli } from '../../core/types.js';
 import type {
   UserRepository,
   LoginChallengeRepository,
@@ -20,6 +21,9 @@ import { verifyBackupCode, markUsed, countRemaining } from '../auth/backup-codes
 import { JWT_EXPIRES_IN, JWT_ISSUER, JWT_AUDIENCE } from '../config.js';
 import { jwtSigningKey } from '../auth/secrets.js';
 import { smsAllowed } from '../throttle.js';
+import { challengeUsable, expiresInMs, maskPhone } from './login-helpers.js';
+
+export * from './login-helpers.js';
 
 export interface SessionPayload {
   token: string;
@@ -31,8 +35,10 @@ export interface SessionPayload {
 
 /** TTL do desafio de OTP. */
 export const OTP_TTL_MS = 5 * 60 * 1000;
+
 /** Tentativas de OTP antes de cair pro código de backup. */
 export const OTP_MAX_ATTEMPTS = 3;
+
 /**
  * Teto absoluto de tentativas por desafio (OTP + backup somados no mesmo
  * contador `attempts`). Depois disso o desafio trava — não dá pra brute-forçar
@@ -80,33 +86,6 @@ export interface LoginDeps {
   users?: UserRepository;
   challenges?: LoginChallengeRepository;
   sms?: OtpSender;
-}
-
-/** Converte '12h' | '30m' | '3600s' | '1d' em milissegundos. Throw se o formato não bater. */
-export function expiresInMs(spec: string): number {
-  const m = /^(\d+)(s|m|h|d)$/.exec(spec.trim());
-  if (!m) {
-    throw new Error(`JWT_EXPIRES_IN inválido: "${spec}" (formato esperado: 12h, 30m, 3600s, 1d).`);
-  }
-  const unit = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2] as 's' | 'm' | 'h' | 'd'];
-  return Number(m[1]) * unit;
-}
-
-/** `+5511999998888` → `+55•••••••8888` (mantém DDI + últimos 4). Nunca revela o número inteiro. */
-export function maskPhone(phone: string): string {
-  const digits = phone.replace(/[^\d+]/g, '');
-  if (digits.length < 8) return '•'.repeat(Math.max(1, digits.length));
-  return digits.slice(0, 3) + '•'.repeat(digits.length - 7) + digits.slice(-4);
-}
-
-/** Um desafio existe e ainda pode ser usado? (não consumido, não expirado) */
-export function challengeUsable(
-  ch: LoginChallenge | null,
-): { ok: true; ch: LoginChallenge } | { ok: false; reason: 'not_found' | 'consumed' | 'expired' } {
-  if (!ch) return { ok: false, reason: 'not_found' };
-  if (ch.consumedAt) return { ok: false, reason: 'consumed' };
-  if (ch.expiresAt.getTime() <= Date.now()) return { ok: false, reason: 'expired' };
-  return { ok: true, ch };
 }
 
 /**

@@ -265,7 +265,7 @@ export async function status(userId: number, deps: SecurityDeps = {}): Promise<S
   const sms = { mode: smsMode(), host: smsProviderHost() };
 
   const user = await users.findById(userId);
-  if (!user || !user.auth2) {
+  if (!user?.auth2) {
     return {
       enabled: false,
       phoneHint: null,

@@ -2,7 +2,6 @@
  * Launch da interface TUI do NIO (Ink + React). Se não houver terminal interativo, ou se o Opencode não estiver no PATH
  */
 import { spawnPortable } from '../lib/proc.js';
-import React from 'react';
 import { render } from 'ink';
 import { ensureHeadroomAndWire } from '../app/ai-client.js';
 import { NIO_AI_PROVIDER, NIO_AI_MODEL_ID } from '../lib/clients/client-configs.js';
@@ -92,7 +91,7 @@ export async function launchNioTui({ cwd }: { cwd: string }): Promise<number> {
     );
   }
 
-  let handle;
+  let handle: Awaited<ReturnType<typeof startOpencode>>;
   try {
     handle = await startOpencode(cwd);
   } catch (err) {

@@ -75,6 +75,14 @@ async function insertBatch(
   return out;
 }
 
+/** Só grava se a task do step ainda está no `fence` ($2) do chamador. */
+const FENCED = `EXISTS (SELECT 1 FROM tasks t WHERE t.id = task_steps.task_id AND t.fence = $2)`;
+
+async function guarded(sql: string, params: unknown[]): Promise<boolean> {
+  const res = await query(sql, params);
+  return (res.rowCount ?? 0) > 0;
+}
+
 export function createStepRepository(): StepRepository {
   return {
     async insertAll(taskId: string, steps: readonly NewStepInput[]): Promise<TaskStep[]> {
@@ -110,30 +118,32 @@ export function createStepRepository(): StepRepository {
       return row ? mapStepRow(row) : null;
     },
 
-    async start(stepId: number): Promise<void> {
-      await query(`UPDATE task_steps SET status = 'running', started_at = now() WHERE id = $1`, [
-        stepId,
-      ]);
-    },
-
-    async reopen(stepId: number): Promise<void> {
-      // Limpa `started_at` junto: o step vai ser executado de novo do zero, e
-      // deixar a marca antiga faria a duração medida virar ficção.
-      await query(
-        `UPDATE task_steps SET status = 'pending', started_at = NULL
-          WHERE id = $1 AND status = 'running'`,
-        [stepId],
+    async start(stepId: number, fence: number): Promise<boolean> {
+      return guarded(
+        `UPDATE task_steps SET status = 'running', started_at = now() WHERE id = $1 AND ${FENCED}`,
+        [stepId, fence],
       );
     },
 
-    async finish(stepId: number, result: StepResult): Promise<void> {
-      await query(
+    async reopen(stepId: number, fence: number): Promise<boolean> {
+      // Limpa `started_at` junto: o step vai ser executado de novo do zero, e
+      // deixar a marca antiga faria a duração medida virar ficção.
+      return guarded(
+        `UPDATE task_steps SET status = 'pending', started_at = NULL
+          WHERE id = $1 AND status = 'running' AND ${FENCED}`,
+        [stepId, fence],
+      );
+    },
+
+    async finish(stepId: number, fence: number, result: StepResult): Promise<boolean> {
+      return guarded(
         `UPDATE task_steps
-            SET status = 'done', output = $2::jsonb, tool_calls = $3::jsonb,
-                tokens_in = $4, tokens_out = $5, completed_at = now()
-          WHERE id = $1`,
+            SET status = 'done', output = $3::jsonb, tool_calls = $4::jsonb,
+                tokens_in = $5, tokens_out = $6, completed_at = now()
+          WHERE id = $1 AND ${FENCED}`,
         [
           stepId,
+          fence,
           JSON.stringify(result.output),
           JSON.stringify(result.toolCalls ?? []),
           result.tokensIn ?? null,
@@ -142,10 +152,11 @@ export function createStepRepository(): StepRepository {
       );
     },
 
-    async failStep(stepId: number, error: string): Promise<void> {
-      await query(
-        `UPDATE task_steps SET status = 'failed', error = $2, completed_at = now() WHERE id = $1`,
-        [stepId, error],
+    async failStep(stepId: number, fence: number, error: string): Promise<boolean> {
+      return guarded(
+        `UPDATE task_steps SET status = 'failed', error = $3, completed_at = now()
+          WHERE id = $1 AND ${FENCED}`,
+        [stepId, fence, error],
       );
     },
 

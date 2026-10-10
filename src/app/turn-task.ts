@@ -78,7 +78,7 @@ export async function beginTurn(
       { stepNumber: STEP_GAP, name: resumir(texto, 80), input: { instruction: texto } },
     ]);
     if (!step) return null;
-    await steps.start(step.id);
+    await steps.start(step.id, task.fence);
     return { taskId: task.id, stepId: step.id };
   } catch {
     return null; // registrar é acessório; o turno continua
@@ -102,7 +102,7 @@ export async function delegateTurn(
     const steps = deps.steps ?? createStepRepository();
     const task = await tasks.findById(turnRef.taskId);
     if (!task) return false;
-    await steps.reopen(turnRef.stepId);
+    await steps.reopen(turnRef.stepId, task.fence);
     const queued = await tasks.setStatus(task.id, 'pending', task.fence, {
       currentStep: STEP_GAP,
       engineSessionId,
@@ -125,7 +125,7 @@ export async function endTurn(
   try {
     const tasks = deps.tasks ?? createTaskRepository();
     const steps = deps.steps ?? createStepRepository();
-    await steps.finish(ref.stepId, {
+    await steps.finish(ref.stepId, 0, {
       output: { text: outcome.text },
       ...(outcome.toolCalls ? { toolCalls: outcome.toolCalls } : {}),
       ...(outcome.tokensIn !== undefined ? { tokensIn: outcome.tokensIn } : {}),
@@ -149,7 +149,7 @@ export async function abortTurn(
   try {
     const tasks = deps.tasks ?? createTaskRepository();
     const steps = deps.steps ?? createStepRepository();
-    await steps.failStep(ref.stepId, motivo);
+    await steps.failStep(ref.stepId, 0, motivo);
     await tasks.fail(ref.taskId, 0, motivo);
   } catch {
     /* idem */

@@ -152,8 +152,11 @@ export interface StepRepository {
   listByTask(taskId: string): Promise<TaskStep[]>;
   /** O próximo step a executar (`pending`, menor `step_number`). */
   nextPending(taskId: string): Promise<TaskStep | null>;
-  /** Marca `running` + `started_at`. */
-  start(stepId: number): Promise<void>;
+  /**
+   * Marca `running` + `started_at`. Toda transição de step exige o `fence` da task
+   * (como `TaskRepository.setStatus`); `false` = lease perdido, nada foi gravado.
+   */
+  start(stepId: number, fence: number): Promise<boolean>;
   /**
    * Devolve um step `running` para `pending`, sem gastar uma tentativa.
    *
@@ -161,10 +164,10 @@ export interface StepRepository {
    * esperar aprovação humana ficaria preso em `running`, e o `nextPending` nunca
    * mais o encontraria — a task não retomaria depois do `nio task approve`.
    */
-  reopen(stepId: number): Promise<void>;
-  finish(stepId: number, result: StepResult): Promise<void>;
+  reopen(stepId: number, fence: number): Promise<boolean>;
+  finish(stepId: number, fence: number, result: StepResult): Promise<boolean>;
   /** Marca `failed`; o retry entra como `attempt + 1`, não sobrescreve. */
-  failStep(stepId: number, error: string): Promise<void>;
+  failStep(stepId: number, fence: number, error: string): Promise<boolean>;
   /** Nova tentativa do mesmo `step_number`, com `attempt` incrementado. */
   retry(stepId: number): Promise<TaskStep>;
   /** Acrescenta steps ao fim (Validator julgou `INCOMPLETE`). */
